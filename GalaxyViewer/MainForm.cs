@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -43,6 +44,8 @@ namespace GalaxyViewer
         private readonly Label _helpOverlay;
         private readonly System.Windows.Forms.Timer _helpTimer;
         private readonly System.Windows.Forms.Timer _regenTimer;
+        private readonly Dictionary<string, GalaxyParameters> _presetLibrary;
+        private readonly string[] _presetNames;
         private static readonly Color PanelBackColor = Color.FromArgb(32, 32, 32);
         private static readonly Color PanelBorderColor = Color.FromArgb(55, 55, 55);
         private static readonly Color AccentColor = Color.FromArgb(78, 156, 255);
@@ -85,6 +88,16 @@ namespace GalaxyViewer
                 ForeColor = Color.WhiteSmoke,
             };
 
+            var presetDefinitions = BuildPresetDefinitions();
+            _presetLibrary = new Dictionary<string, GalaxyParameters>(StringComparer.OrdinalIgnoreCase);
+            _presetNames = new string[presetDefinitions.Length];
+            for (int i = 0; i < presetDefinitions.Length; i++)
+            {
+                var (name, parameters) = presetDefinitions[i];
+                _presetLibrary[name] = parameters;
+                _presetNames[i] = name;
+            }
+
             var split = new SplitContainer
             {
                 Dock = DockStyle.Fill,
@@ -104,12 +117,11 @@ namespace GalaxyViewer
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 3,
+                RowCount = 2,
                 Padding = new Padding(12, 10, 12, 10),
                 BackColor = PanelBackColor,
             };
-            panelHost.RowStyles.Add(new RowStyle(SizeType.Absolute, StandardRowHeight + 12));
-            panelHost.RowStyles.Add(new RowStyle(SizeType.Absolute, 32f));
+            panelHost.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             panelHost.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
             split.Panel1.Controls.Add(panelHost);
             split.Panel1.BackColor = PanelBackColor;
@@ -185,7 +197,7 @@ namespace GalaxyViewer
                 ForeColor = Color.WhiteSmoke,
                 Margin = new Padding(0, 2, 0, 2),
             };
-            _presetBox.Items.AddRange(new object[] { "Default", "Barred spiral", "Compact core", "Diffuse arms" });
+            _presetBox.Items.AddRange(_presetNames);
             _presetBox.SelectedIndex = 0;
             _presetBox.SelectedIndexChanged += (_, _) => LoadPreset(_presetBox.SelectedItem?.ToString() ?? "");
 
@@ -205,18 +217,6 @@ namespace GalaxyViewer
                 TextAlign = ContentAlignment.MiddleLeft,
             };
 
-            var headerPanel = new TableLayoutPanel
-            {
-                ColumnCount = 5,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 0, 0, 6),
-                BackColor = PanelBackColor,
-            };
-            headerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 76f));
-            headerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 56f));
-            headerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-            headerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 88f));
-            headerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100f));
             var presetLabel = new Label
             {
                 Text = "Preset",
@@ -227,21 +227,71 @@ namespace GalaxyViewer
                 Margin = new Padding(0, 2, 0, 2),
                 ForeColor = Color.Gainsboro,
             };
-            headerPanel.Controls.Add(_presetPreview, 0, 0);
-            headerPanel.Controls.Add(presetLabel, 1, 0);
-            headerPanel.Controls.Add(_presetBox, 2, 0);
-            headerPanel.Controls.Add(_resetButton, 3, 0);
-            headerPanel.Controls.Add(_randomizeSeedButton, 4, 0);
+
+            var presetCard = new TableLayoutPanel
+            {
+                ColumnCount = 2,
+                RowCount = 3,
+                Dock = DockStyle.Fill,
+                BackColor = SecondarySurfaceColor,
+                Padding = new Padding(10, 8, 10, 10),
+                Margin = new Padding(0, 0, 0, 10),
+            };
+            presetCard.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96f));
+            presetCard.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            presetCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            presetCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            presetCard.RowStyles.Add(new RowStyle(SizeType.Absolute, 32f));
+
+            _presetPreview.Margin = new Padding(0, 0, 12, 0);
+            presetCard.Controls.Add(_presetPreview, 0, 0);
+            presetCard.SetRowSpan(_presetPreview, 3);
+
+            var presetHeader = new TableLayoutPanel
+            {
+                ColumnCount = 2,
+                Dock = DockStyle.Fill,
+                RowCount = 1,
+                Margin = new Padding(0, 0, 0, 4),
+            };
+            presetHeader.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            presetHeader.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            presetHeader.Controls.Add(presetLabel, 0, 0);
+            presetHeader.Controls.Add(_presetBox, 1, 0);
+            presetCard.Controls.Add(presetHeader, 1, 0);
+
+            var presetActions = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Margin = new Padding(0, 4, 0, 8),
+            };
+            presetActions.Controls.Add(_resetButton);
+            presetCard.Controls.Add(presetActions, 1, 1);
 
             var statusPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = SecondarySurfaceColor,
+                BackColor = ControlSurfaceColor,
                 Padding = new Padding(8, 4, 8, 4),
-                Margin = new Padding(0, 0, 0, 8),
+                Margin = new Padding(0, 6, 0, 0),
                 Height = 32,
             };
             statusPanel.Controls.Add(_statusLabel);
+            presetCard.SetColumnSpan(statusPanel, 2);
+            presetCard.Controls.Add(statusPanel, 0, 2);
+
+            var presetContainer = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = PanelBorderColor,
+                Padding = new Padding(1),
+                Margin = new Padding(0, 0, 0, 8),
+            };
+            presetContainer.Controls.Add(presetCard);
 
             _settingsPanel = new TableLayoutPanel
             {
@@ -254,9 +304,8 @@ namespace GalaxyViewer
             _settingsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40f));
             _settingsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60f));
 
-            panelHost.Controls.Add(headerPanel, 0, 0);
-            panelHost.Controls.Add(statusPanel, 0, 1);
-            panelHost.Controls.Add(_settingsPanel, 0, 2);
+            panelHost.Controls.Add(presetContainer, 0, 0);
+            panelHost.Controls.Add(_settingsPanel, 0, 1);
 
             int row = 0;
             AddSectionHeader(_settingsPanel, "Galaxy disk", ref row);
@@ -273,7 +322,7 @@ namespace GalaxyViewer
             AttachDragHandle("Brightness", "Overall brightness multiplier for stars.", _settingsPanel, _brightnessBox, row++);
 
             AddSectionHeader(_settingsPanel, "Randomness", ref row);
-            AttachDragHandle("Seed", "Random seed for reproducible galaxies.", _settingsPanel, _seedBox, row++);
+            AddSeedRow("Random seed for reproducible galaxies.", _settingsPanel, ref row);
 
             AddSeparator(_settingsPanel, row++);
 
@@ -384,64 +433,7 @@ namespace GalaxyViewer
 
         private void LoadPreset(string name)
         {
-            var preset = new GalaxyParameters();
-            switch (name.ToLowerInvariant())
-            {
-                case "barred spiral":
-                    preset.StarCount = 80000;
-                    preset.ArmCount = 2;
-                    preset.ArmTwist = 8f;
-                    preset.ArmSpread = 0.25f;
-                    preset.DiskRadius = 50f;
-                    preset.VerticalThickness = 0.45f;
-                    preset.Noise = 0.2f;
-                    preset.CoreFalloff = 1.6f;
-                    preset.Brightness = 1.1f;
-                    preset.BulgeRadius = 6f;
-                    preset.BulgeStarCount = 25000;
-                    preset.BulgeFalloff = 2.2f;
-                    preset.BulgeVerticalScale = 0.9f;
-                    preset.BulgeBrightness = 2.2f;
-                    preset.Seed = _parameters.Seed;
-                    break;
-                case "compact core":
-                    preset.StarCount = 60000;
-                    preset.ArmCount = 3;
-                    preset.ArmTwist = 6f;
-                    preset.ArmSpread = 0.3f;
-                    preset.DiskRadius = 35f;
-                    preset.VerticalThickness = 0.7f;
-                    preset.Noise = 0.18f;
-                    preset.CoreFalloff = 2.5f;
-                    preset.Brightness = 1.2f;
-                    preset.BulgeRadius = 7f;
-                    preset.BulgeStarCount = 30000;
-                    preset.BulgeFalloff = 2.5f;
-                    preset.BulgeVerticalScale = 0.7f;
-                    preset.BulgeBrightness = 2.5f;
-                    preset.Seed = _parameters.Seed;
-                    break;
-                case "diffuse arms":
-                    preset.StarCount = 70000;
-                    preset.ArmCount = 4;
-                    preset.ArmTwist = 4.5f;
-                    preset.ArmSpread = 0.45f;
-                    preset.DiskRadius = 55f;
-                    preset.VerticalThickness = 0.5f;
-                    preset.Noise = 0.35f;
-                    preset.CoreFalloff = 1.8f;
-                    preset.Brightness = 1.0f;
-                    preset.BulgeRadius = 4f;
-                    preset.BulgeStarCount = 15000;
-                    preset.BulgeFalloff = 1.8f;
-                    preset.BulgeVerticalScale = 1.0f;
-                    preset.BulgeBrightness = 1.8f;
-                    preset.Seed = _parameters.Seed;
-                    break;
-                default:
-                    preset = new GalaxyParameters { Seed = _parameters.Seed };
-                    break;
-            }
+            var preset = ResolvePreset(name);
 
             _parameters = preset;
             _suppressEvents = true;
@@ -464,6 +456,690 @@ namespace GalaxyViewer
 
             _presetPreview.Invalidate();
             RegenerateGalaxy();
+        }
+
+        private GalaxyParameters ResolvePreset(string name)
+        {
+            if (_presetLibrary.TryGetValue(name, out var preset))
+            {
+                var clone = preset.Clone();
+                clone.Seed = _parameters.Seed;
+                return clone;
+            }
+
+            var fallback = new GalaxyParameters { Seed = _parameters.Seed };
+            return fallback;
+        }
+
+        private static (string Name, GalaxyParameters Parameters)[] BuildPresetDefinitions()
+        {
+            return new[]
+            {
+                ("Default", new GalaxyParameters()),
+                ("Elliptical (E0-E7)", new GalaxyParameters
+                {
+                    StarCount = 80000,
+                    ArmCount = 1,
+                    ArmTwist = 0.6f,
+                    ArmSpread = 0.95f,
+                    DiskRadius = 42f,
+                    VerticalThickness = 1.4f,
+                    Noise = 0.5f,
+                    CoreFalloff = 2.6f,
+                    Brightness = 1.3f,
+                    BulgeRadius = 12f,
+                    BulgeStarCount = 70000,
+                    BulgeFalloff = 1.6f,
+                    BulgeVerticalScale = 1.2f,
+                    BulgeBrightness = 3.2f,
+                }),
+                ("Lenticular (S0)", new GalaxyParameters
+                {
+                    StarCount = 65000,
+                    ArmCount = 2,
+                    ArmTwist = 4f,
+                    ArmSpread = 0.12f,
+                    DiskRadius = 45f,
+                    VerticalThickness = 0.35f,
+                    Noise = 0.1f,
+                    CoreFalloff = 2.2f,
+                    Brightness = 1.1f,
+                    BulgeRadius = 9f,
+                    BulgeStarCount = 35000,
+                    BulgeFalloff = 2.1f,
+                    BulgeVerticalScale = 0.8f,
+                    BulgeBrightness = 2.8f,
+                }),
+                ("Spiral (Sa)", new GalaxyParameters
+                {
+                    StarCount = 80000,
+                    ArmCount = 2,
+                    ArmTwist = 10f,
+                    ArmSpread = 0.18f,
+                    DiskRadius = 50f,
+                    VerticalThickness = 0.45f,
+                    Noise = 0.16f,
+                    CoreFalloff = 2.4f,
+                    Brightness = 1.25f,
+                    BulgeRadius = 8.5f,
+                    BulgeStarCount = 32000,
+                    BulgeFalloff = 2.4f,
+                    BulgeVerticalScale = 0.9f,
+                    BulgeBrightness = 2.8f,
+                }),
+                ("Spiral (Sb)", new GalaxyParameters
+                {
+                    StarCount = 78000,
+                    ArmCount = 3,
+                    ArmTwist = 8.5f,
+                    ArmSpread = 0.24f,
+                    DiskRadius = 52f,
+                    VerticalThickness = 0.4f,
+                    Noise = 0.2f,
+                    CoreFalloff = 2.0f,
+                    Brightness = 1.15f,
+                    BulgeRadius = 7f,
+                    BulgeStarCount = 26000,
+                    BulgeFalloff = 2.2f,
+                    BulgeVerticalScale = 0.8f,
+                    BulgeBrightness = 2.4f,
+                }),
+                ("Spiral (Sc)", new GalaxyParameters
+                {
+                    StarCount = 76000,
+                    ArmCount = 3,
+                    ArmTwist = 6.5f,
+                    ArmSpread = 0.32f,
+                    DiskRadius = 54f,
+                    VerticalThickness = 0.35f,
+                    Noise = 0.22f,
+                    CoreFalloff = 1.8f,
+                    Brightness = 1.05f,
+                    BulgeRadius = 5f,
+                    BulgeStarCount = 20000,
+                    BulgeFalloff = 2.0f,
+                    BulgeVerticalScale = 0.7f,
+                    BulgeBrightness = 2.0f,
+                }),
+                ("Spiral (Sd)", new GalaxyParameters
+                {
+                    StarCount = 70000,
+                    ArmCount = 4,
+                    ArmTwist = 5f,
+                    ArmSpread = 0.42f,
+                    DiskRadius = 58f,
+                    VerticalThickness = 0.4f,
+                    Noise = 0.3f,
+                    CoreFalloff = 1.4f,
+                    Brightness = 0.95f,
+                    BulgeRadius = 3.2f,
+                    BulgeStarCount = 12000,
+                    BulgeFalloff = 1.6f,
+                    BulgeVerticalScale = 0.6f,
+                    BulgeBrightness = 1.7f,
+                }),
+                ("Barred Spiral (SBa)", new GalaxyParameters
+                {
+                    StarCount = 82000,
+                    ArmCount = 2,
+                    ArmTwist = 9f,
+                    ArmSpread = 0.2f,
+                    DiskRadius = 48f,
+                    VerticalThickness = 0.45f,
+                    Noise = 0.18f,
+                    CoreFalloff = 2.0f,
+                    Brightness = 1.2f,
+                    BulgeRadius = 9f,
+                    BulgeStarCount = 36000,
+                    BulgeFalloff = 2.6f,
+                    BulgeVerticalScale = 1.0f,
+                    BulgeBrightness = 3.0f,
+                }),
+                ("Barred Spiral (SBb)", new GalaxyParameters
+                {
+                    StarCount = 80000,
+                    ArmCount = 3,
+                    ArmTwist = 7.5f,
+                    ArmSpread = 0.28f,
+                    DiskRadius = 52f,
+                    VerticalThickness = 0.42f,
+                    Noise = 0.22f,
+                    CoreFalloff = 1.9f,
+                    Brightness = 1.1f,
+                    BulgeRadius = 7.5f,
+                    BulgeStarCount = 30000,
+                    BulgeFalloff = 2.2f,
+                    BulgeVerticalScale = 0.9f,
+                    BulgeBrightness = 2.6f,
+                }),
+                ("Barred Spiral (SBc)", new GalaxyParameters
+                {
+                    StarCount = 78000,
+                    ArmCount = 4,
+                    ArmTwist = 6f,
+                    ArmSpread = 0.36f,
+                    DiskRadius = 56f,
+                    VerticalThickness = 0.38f,
+                    Noise = 0.27f,
+                    CoreFalloff = 1.6f,
+                    Brightness = 1.0f,
+                    BulgeRadius = 5f,
+                    BulgeStarCount = 20000,
+                    BulgeFalloff = 2.0f,
+                    BulgeVerticalScale = 0.8f,
+                    BulgeBrightness = 2.2f,
+                }),
+                ("Barred Spiral (SBd)", new GalaxyParameters
+                {
+                    StarCount = 72000,
+                    ArmCount = 4,
+                    ArmTwist = 4.5f,
+                    ArmSpread = 0.44f,
+                    DiskRadius = 60f,
+                    VerticalThickness = 0.42f,
+                    Noise = 0.34f,
+                    CoreFalloff = 1.3f,
+                    Brightness = 0.95f,
+                    BulgeRadius = 3.2f,
+                    BulgeStarCount = 14000,
+                    BulgeFalloff = 1.7f,
+                    BulgeVerticalScale = 0.7f,
+                    BulgeBrightness = 1.9f,
+                }),
+                ("Irregular (Irr I)", new GalaxyParameters
+                {
+                    StarCount = 55000,
+                    ArmCount = 1,
+                    ArmTwist = 1.5f,
+                    ArmSpread = 0.9f,
+                    DiskRadius = 40f,
+                    VerticalThickness = 0.9f,
+                    Noise = 0.6f,
+                    CoreFalloff = 1.0f,
+                    Brightness = 0.9f,
+                    BulgeRadius = 2.5f,
+                    BulgeStarCount = 6000,
+                    BulgeFalloff = 1.2f,
+                    BulgeVerticalScale = 1.1f,
+                    BulgeBrightness = 1.3f,
+                }),
+                ("Irregular (Irr II)", new GalaxyParameters
+                {
+                    StarCount = 65000,
+                    ArmCount = 1,
+                    ArmTwist = 0.8f,
+                    ArmSpread = 1.0f,
+                    DiskRadius = 42f,
+                    VerticalThickness = 1.1f,
+                    Noise = 0.8f,
+                    CoreFalloff = 0.9f,
+                    Brightness = 0.95f,
+                    BulgeRadius = 2f,
+                    BulgeStarCount = 5000,
+                    BulgeFalloff = 1.0f,
+                    BulgeVerticalScale = 1.2f,
+                    BulgeBrightness = 1.4f,
+                }),
+                ("Dwarf Elliptical (dE)", new GalaxyParameters
+                {
+                    StarCount = 12000,
+                    ArmCount = 1,
+                    ArmTwist = 0.8f,
+                    ArmSpread = 0.9f,
+                    DiskRadius = 16f,
+                    VerticalThickness = 0.6f,
+                    Noise = 0.35f,
+                    CoreFalloff = 2.2f,
+                    Brightness = 0.8f,
+                    BulgeRadius = 4f,
+                    BulgeStarCount = 8000,
+                    BulgeFalloff = 2.2f,
+                    BulgeVerticalScale = 0.9f,
+                    BulgeBrightness = 1.6f,
+                }),
+                ("Dwarf Spheroidal (dSph)", new GalaxyParameters
+                {
+                    StarCount = 8000,
+                    ArmCount = 1,
+                    ArmTwist = 0.3f,
+                    ArmSpread = 0.95f,
+                    DiskRadius = 14f,
+                    VerticalThickness = 0.9f,
+                    Noise = 0.45f,
+                    CoreFalloff = 1.6f,
+                    Brightness = 0.6f,
+                    BulgeRadius = 3.5f,
+                    BulgeStarCount = 6000,
+                    BulgeFalloff = 1.4f,
+                    BulgeVerticalScale = 1.0f,
+                    BulgeBrightness = 1.2f,
+                }),
+                ("Dwarf Irregular (dIrr)", new GalaxyParameters
+                {
+                    StarCount = 10000,
+                    ArmCount = 1,
+                    ArmTwist = 0.6f,
+                    ArmSpread = 1.0f,
+                    DiskRadius = 18f,
+                    VerticalThickness = 1.0f,
+                    Noise = 0.75f,
+                    CoreFalloff = 1.0f,
+                    Brightness = 0.7f,
+                    BulgeRadius = 2.5f,
+                    BulgeStarCount = 4000,
+                    BulgeFalloff = 1.2f,
+                    BulgeVerticalScale = 1.1f,
+                    BulgeBrightness = 1.1f,
+                }),
+                ("Dwarf Spiral (dSp)", new GalaxyParameters
+                {
+                    StarCount = 14000,
+                    ArmCount = 2,
+                    ArmTwist = 4.5f,
+                    ArmSpread = 0.4f,
+                    DiskRadius = 20f,
+                    VerticalThickness = 0.35f,
+                    Noise = 0.25f,
+                    CoreFalloff = 1.7f,
+                    Brightness = 0.9f,
+                    BulgeRadius = 3f,
+                    BulgeStarCount = 5000,
+                    BulgeFalloff = 1.8f,
+                    BulgeVerticalScale = 0.8f,
+                    BulgeBrightness = 1.5f,
+                }),
+                ("Peculiar", new GalaxyParameters
+                {
+                    StarCount = 70000,
+                    ArmCount = 3,
+                    ArmTwist = 5.5f,
+                    ArmSpread = 0.65f,
+                    DiskRadius = 48f,
+                    VerticalThickness = 0.8f,
+                    Noise = 0.6f,
+                    CoreFalloff = 1.2f,
+                    Brightness = 1.0f,
+                    BulgeRadius = 4f,
+                    BulgeStarCount = 15000,
+                    BulgeFalloff = 1.5f,
+                    BulgeVerticalScale = 0.9f,
+                    BulgeBrightness = 1.8f,
+                }),
+                ("Interacting", new GalaxyParameters
+                {
+                    StarCount = 90000,
+                    ArmCount = 3,
+                    ArmTwist = 6f,
+                    ArmSpread = 0.72f,
+                    DiskRadius = 60f,
+                    VerticalThickness = 0.95f,
+                    Noise = 0.55f,
+                    CoreFalloff = 1.1f,
+                    Brightness = 1.15f,
+                    BulgeRadius = 5.5f,
+                    BulgeStarCount = 22000,
+                    BulgeFalloff = 1.7f,
+                    BulgeVerticalScale = 1.0f,
+                    BulgeBrightness = 2.1f,
+                }),
+                ("Merging", new GalaxyParameters
+                {
+                    StarCount = 120000,
+                    ArmCount = 2,
+                    ArmTwist = 4.5f,
+                    ArmSpread = 0.85f,
+                    DiskRadius = 65f,
+                    VerticalThickness = 1.1f,
+                    Noise = 0.7f,
+                    CoreFalloff = 1.0f,
+                    Brightness = 1.3f,
+                    BulgeRadius = 7f,
+                    BulgeStarCount = 32000,
+                    BulgeFalloff = 1.4f,
+                    BulgeVerticalScale = 1.1f,
+                    BulgeBrightness = 2.5f,
+                }),
+                ("Ring (Resonance)", new GalaxyParameters
+                {
+                    StarCount = 65000,
+                    ArmCount = 1,
+                    ArmTwist = 10f,
+                    ArmSpread = 0.08f,
+                    DiskRadius = 50f,
+                    VerticalThickness = 0.35f,
+                    Noise = 0.12f,
+                    CoreFalloff = 1.6f,
+                    Brightness = 1.05f,
+                    BulgeRadius = 6f,
+                    BulgeStarCount = 18000,
+                    BulgeFalloff = 2.0f,
+                    BulgeVerticalScale = 0.8f,
+                    BulgeBrightness = 2.2f,
+                }),
+                ("Ring (Collisional)", new GalaxyParameters
+                {
+                    StarCount = 75000,
+                    ArmCount = 1,
+                    ArmTwist = 11f,
+                    ArmSpread = 0.18f,
+                    DiskRadius = 55f,
+                    VerticalThickness = 0.45f,
+                    Noise = 0.25f,
+                    CoreFalloff = 1.2f,
+                    Brightness = 1.15f,
+                    BulgeRadius = 4.5f,
+                    BulgeStarCount = 15000,
+                    BulgeFalloff = 1.6f,
+                    BulgeVerticalScale = 0.9f,
+                    BulgeBrightness = 2.0f,
+                }),
+                ("Ring (Polar)", new GalaxyParameters
+                {
+                    StarCount = 70000,
+                    ArmCount = 1,
+                    ArmTwist = 9f,
+                    ArmSpread = 0.22f,
+                    DiskRadius = 52f,
+                    VerticalThickness = 1.3f,
+                    Noise = 0.28f,
+                    CoreFalloff = 1.5f,
+                    Brightness = 1.05f,
+                    BulgeRadius = 5.5f,
+                    BulgeStarCount = 20000,
+                    BulgeFalloff = 1.9f,
+                    BulgeVerticalScale = 1.4f,
+                    BulgeBrightness = 2.4f,
+                }),
+                ("Low Surface Brightness", new GalaxyParameters
+                {
+                    StarCount = 50000,
+                    ArmCount = 2,
+                    ArmTwist = 5f,
+                    ArmSpread = 0.5f,
+                    DiskRadius = 70f,
+                    VerticalThickness = 0.55f,
+                    Noise = 0.5f,
+                    CoreFalloff = 0.9f,
+                    Brightness = 0.45f,
+                    BulgeRadius = 3f,
+                    BulgeStarCount = 8000,
+                    BulgeFalloff = 1.5f,
+                    BulgeVerticalScale = 0.9f,
+                    BulgeBrightness = 1.1f,
+                }),
+                ("Ultra-Diffuse", new GalaxyParameters
+                {
+                    StarCount = 30000,
+                    ArmCount = 1,
+                    ArmTwist = 2f,
+                    ArmSpread = 0.85f,
+                    DiskRadius = 80f,
+                    VerticalThickness = 1.3f,
+                    Noise = 0.65f,
+                    CoreFalloff = 0.8f,
+                    Brightness = 0.35f,
+                    BulgeRadius = 2.5f,
+                    BulgeStarCount = 6000,
+                    BulgeFalloff = 1.3f,
+                    BulgeVerticalScale = 1.2f,
+                    BulgeBrightness = 1.0f,
+                }),
+                ("Seyfert", new GalaxyParameters
+                {
+                    StarCount = 65000,
+                    ArmCount = 2,
+                    ArmTwist = 7f,
+                    ArmSpread = 0.26f,
+                    DiskRadius = 45f,
+                    VerticalThickness = 0.35f,
+                    Noise = 0.2f,
+                    CoreFalloff = 2.2f,
+                    Brightness = 1.3f,
+                    BulgeRadius = 6f,
+                    BulgeStarCount = 26000,
+                    BulgeFalloff = 2.6f,
+                    BulgeVerticalScale = 0.9f,
+                    BulgeBrightness = 3.5f,
+                }),
+                ("Quasar", new GalaxyParameters
+                {
+                    StarCount = 60000,
+                    ArmCount = 2,
+                    ArmTwist = 6f,
+                    ArmSpread = 0.3f,
+                    DiskRadius = 40f,
+                    VerticalThickness = 0.6f,
+                    Noise = 0.25f,
+                    CoreFalloff = 2.4f,
+                    Brightness = 2.0f,
+                    BulgeRadius = 5f,
+                    BulgeStarCount = 40000,
+                    BulgeFalloff = 2.0f,
+                    BulgeVerticalScale = 1.0f,
+                    BulgeBrightness = 6.0f,
+                }),
+                ("Blazar", new GalaxyParameters
+                {
+                    StarCount = 55000,
+                    ArmCount = 2,
+                    ArmTwist = 5.5f,
+                    ArmSpread = 0.32f,
+                    DiskRadius = 38f,
+                    VerticalThickness = 1.2f,
+                    Noise = 0.22f,
+                    CoreFalloff = 2.0f,
+                    Brightness = 1.8f,
+                    BulgeRadius = 4.5f,
+                    BulgeStarCount = 28000,
+                    BulgeFalloff = 1.8f,
+                    BulgeVerticalScale = 1.6f,
+                    BulgeBrightness = 5.0f,
+                }),
+                ("Radio Galaxy", new GalaxyParameters
+                {
+                    StarCount = 85000,
+                    ArmCount = 2,
+                    ArmTwist = 5f,
+                    ArmSpread = 0.28f,
+                    DiskRadius = 60f,
+                    VerticalThickness = 0.9f,
+                    Noise = 0.2f,
+                    CoreFalloff = 1.5f,
+                    Brightness = 1.2f,
+                    BulgeRadius = 6.5f,
+                    BulgeStarCount = 24000,
+                    BulgeFalloff = 1.7f,
+                    BulgeVerticalScale = 1.1f,
+                    BulgeBrightness = 3.2f,
+                }),
+                ("LINER", new GalaxyParameters
+                {
+                    StarCount = 65000,
+                    ArmCount = 2,
+                    ArmTwist = 4.5f,
+                    ArmSpread = 0.3f,
+                    DiskRadius = 42f,
+                    VerticalThickness = 0.6f,
+                    Noise = 0.2f,
+                    CoreFalloff = 2.3f,
+                    Brightness = 1.0f,
+                    BulgeRadius = 5.5f,
+                    BulgeStarCount = 23000,
+                    BulgeFalloff = 2.4f,
+                    BulgeVerticalScale = 0.9f,
+                    BulgeBrightness = 2.8f,
+                }),
+                ("Starburst", new GalaxyParameters
+                {
+                    StarCount = 100000,
+                    ArmCount = 3,
+                    ArmTwist = 6.5f,
+                    ArmSpread = 0.48f,
+                    DiskRadius = 50f,
+                    VerticalThickness = 0.7f,
+                    Noise = 0.35f,
+                    CoreFalloff = 1.4f,
+                    Brightness = 1.6f,
+                    BulgeRadius = 5f,
+                    BulgeStarCount = 32000,
+                    BulgeFalloff = 1.6f,
+                    BulgeVerticalScale = 1.0f,
+                    BulgeBrightness = 3.5f,
+                }),
+                ("Post-Starburst (E+A / K+A)", new GalaxyParameters
+                {
+                    StarCount = 65000,
+                    ArmCount = 2,
+                    ArmTwist = 3.5f,
+                    ArmSpread = 0.4f,
+                    DiskRadius = 48f,
+                    VerticalThickness = 0.6f,
+                    Noise = 0.3f,
+                    CoreFalloff = 1.8f,
+                    Brightness = 0.9f,
+                    BulgeRadius = 6.5f,
+                    BulgeStarCount = 28000,
+                    BulgeFalloff = 2.0f,
+                    BulgeVerticalScale = 1.0f,
+                    BulgeBrightness = 2.2f,
+                }),
+                ("cD Galaxy", new GalaxyParameters
+                {
+                    StarCount = 130000,
+                    ArmCount = 1,
+                    ArmTwist = 1.0f,
+                    ArmSpread = 0.85f,
+                    DiskRadius = 90f,
+                    VerticalThickness = 1.3f,
+                    Noise = 0.55f,
+                    CoreFalloff = 1.5f,
+                    Brightness = 1.1f,
+                    BulgeRadius = 14f,
+                    BulgeStarCount = 90000,
+                    BulgeFalloff = 1.3f,
+                    BulgeVerticalScale = 1.2f,
+                    BulgeBrightness = 3.0f,
+                }),
+                ("Brightest Cluster Galaxy (BCG)", new GalaxyParameters
+                {
+                    StarCount = 115000,
+                    ArmCount = 1,
+                    ArmTwist = 0.9f,
+                    ArmSpread = 0.8f,
+                    DiskRadius = 85f,
+                    VerticalThickness = 1.2f,
+                    Noise = 0.5f,
+                    CoreFalloff = 1.6f,
+                    Brightness = 1.05f,
+                    BulgeRadius = 12f,
+                    BulgeStarCount = 80000,
+                    BulgeFalloff = 1.4f,
+                    BulgeVerticalScale = 1.1f,
+                    BulgeBrightness = 2.8f,
+                }),
+                ("Flocculent Spiral", new GalaxyParameters
+                {
+                    StarCount = 72000,
+                    ArmCount = 4,
+                    ArmTwist = 5.5f,
+                    ArmSpread = 0.6f,
+                    DiskRadius = 48f,
+                    VerticalThickness = 0.4f,
+                    Noise = 0.5f,
+                    CoreFalloff = 1.6f,
+                    Brightness = 1.05f,
+                    BulgeRadius = 4.5f,
+                    BulgeStarCount = 16000,
+                    BulgeFalloff = 1.7f,
+                    BulgeVerticalScale = 0.8f,
+                    BulgeBrightness = 2.0f,
+                }),
+                ("Grand-Design Spiral", new GalaxyParameters
+                {
+                    StarCount = 90000,
+                    ArmCount = 2,
+                    ArmTwist = 9.5f,
+                    ArmSpread = 0.22f,
+                    DiskRadius = 55f,
+                    VerticalThickness = 0.45f,
+                    Noise = 0.2f,
+                    CoreFalloff = 2.0f,
+                    Brightness = 1.2f,
+                    BulgeRadius = 7f,
+                    BulgeStarCount = 26000,
+                    BulgeFalloff = 2.3f,
+                    BulgeVerticalScale = 0.9f,
+                    BulgeBrightness = 2.5f,
+                }),
+                ("Anemic Spiral", new GalaxyParameters
+                {
+                    StarCount = 50000,
+                    ArmCount = 2,
+                    ArmTwist = 6.5f,
+                    ArmSpread = 0.3f,
+                    DiskRadius = 60f,
+                    VerticalThickness = 0.4f,
+                    Noise = 0.26f,
+                    CoreFalloff = 1.7f,
+                    Brightness = 0.7f,
+                    BulgeRadius = 5f,
+                    BulgeStarCount = 14000,
+                    BulgeFalloff = 1.8f,
+                    BulgeVerticalScale = 0.8f,
+                    BulgeBrightness = 1.6f,
+                }),
+                ("Barred spiral", new GalaxyParameters
+                {
+                    StarCount = 80000,
+                    ArmCount = 2,
+                    ArmTwist = 8f,
+                    ArmSpread = 0.25f,
+                    DiskRadius = 50f,
+                    VerticalThickness = 0.45f,
+                    Noise = 0.2f,
+                    CoreFalloff = 1.6f,
+                    Brightness = 1.1f,
+                    BulgeRadius = 6f,
+                    BulgeStarCount = 25000,
+                    BulgeFalloff = 2.2f,
+                    BulgeVerticalScale = 0.9f,
+                    BulgeBrightness = 2.2f,
+                }),
+                ("Compact core", new GalaxyParameters
+                {
+                    StarCount = 60000,
+                    ArmCount = 3,
+                    ArmTwist = 6f,
+                    ArmSpread = 0.3f,
+                    DiskRadius = 35f,
+                    VerticalThickness = 0.7f,
+                    Noise = 0.18f,
+                    CoreFalloff = 2.5f,
+                    Brightness = 1.2f,
+                    BulgeRadius = 7f,
+                    BulgeStarCount = 30000,
+                    BulgeFalloff = 2.5f,
+                    BulgeVerticalScale = 0.7f,
+                    BulgeBrightness = 2.5f,
+                }),
+                ("Diffuse arms", new GalaxyParameters
+                {
+                    StarCount = 70000,
+                    ArmCount = 4,
+                    ArmTwist = 4.5f,
+                    ArmSpread = 0.45f,
+                    DiskRadius = 55f,
+                    VerticalThickness = 0.5f,
+                    Noise = 0.35f,
+                    CoreFalloff = 1.8f,
+                    Brightness = 1.0f,
+                    BulgeRadius = 4f,
+                    BulgeStarCount = 15000,
+                    BulgeFalloff = 1.8f,
+                    BulgeVerticalScale = 1.0f,
+                    BulgeBrightness = 1.8f,
+                }),
+            };
         }
 
         private static void SetValueClamped(ScrubbableNumeric control, decimal value)
@@ -619,6 +1295,46 @@ namespace GalaxyViewer
             _toolTip.SetToolTip(lbl, body);
             _toolTip.SetToolTip(control, body);
             return lbl;
+        }
+
+        private void AddSeedRow(string tooltip, TableLayoutPanel panel, ref int row)
+        {
+            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, StandardRowHeight));
+
+            var lbl = new Label
+            {
+                Text = "Seed",
+                Dock = DockStyle.Fill,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(0, 2, 0, 0),
+                Margin = new Padding(0, 4, 8, 4),
+                ForeColor = Color.Gainsboro,
+            };
+
+            var seedRow = new TableLayoutPanel
+            {
+                ColumnCount = 2,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 2, 0, 2),
+            };
+            seedRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            seedRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 98f));
+
+            _seedBox.Margin = new Padding(0, 2, 6, 2);
+            seedRow.Controls.Add(_seedBox, 0, 0);
+            seedRow.Controls.Add(_randomizeSeedButton, 1, 0);
+
+            panel.Controls.Add(lbl, 0, row);
+            panel.Controls.Add(seedRow, 1, row);
+
+            _seedBox.AttachDragHandle(lbl);
+            var scrubHint = "Drag to scrub. Shift = 10x, Alt = 0.1x. Double-click to type.";
+            var body = string.IsNullOrWhiteSpace(tooltip) ? scrubHint : $"{tooltip}\n{scrubHint}";
+            _toolTip.SetToolTip(lbl, body);
+            _toolTip.SetToolTip(_seedBox, body);
+            _toolTip.SetToolTip(_randomizeSeedButton, "Randomize seed and regenerate.");
+            row++;
         }
 
         private static void AddSeparator(TableLayoutPanel panel, int row)

@@ -24,10 +24,9 @@ namespace GalaxyViewer
         public List<Star> Generate(GalaxyParameters parameters, CancellationToken token)
         {
             var random = new Random(parameters.Seed);
-            int haloStarCount = Math.Max(1000, parameters.StarCount / 8);
-            var stars = new List<Star>(parameters.StarCount + parameters.BulgeStarCount + haloStarCount);
+            var stars = new List<Star>(parameters.StarCount + parameters.BulgeStarCount);
             float diskRadius = Math.Max(1f, parameters.DiskRadius);
-            float haloRadius = diskRadius * 1.35f;
+            float diskEdge = diskRadius * 0.98f; // keep stars inside the disk without an outer ring
 
             for (int i = 0; i < parameters.StarCount; i++)
             {
@@ -42,9 +41,9 @@ namespace GalaxyViewer
                 float angleNoise = (float)(NextGaussian(random) * parameters.ArmSpread);
                 float angle = armAngle + twist + angleNoise;
 
-                // Allow some spill beyond the nominal disk to soften the edge
+                // Jitter stars within the disk while avoiding an outer ring
                 float radialNoise = (float)(NextGaussian(random) * parameters.Noise * diskRadius * 0.25f);
-                float radius = Math.Clamp(baseRadius + radialNoise, 0.05f, haloRadius);
+                float radius = Math.Clamp(baseRadius + radialNoise, 0.05f, diskEdge);
 
                 float x = radius * MathF.Cos(angle);
                 float y = radius * MathF.Sin(angle);
@@ -53,10 +52,8 @@ namespace GalaxyViewer
 
                 float radial01 = radius / diskRadius;
                 float coreFalloff = MathF.Pow(MathF.Max(0f, 1f - radial01), parameters.CoreFalloff);
-                float haloT = Clamp((radius - diskRadius) / MathF.Max(0.0001f, haloRadius - diskRadius), 0f, 1f);
-                float envelope = MathF.Pow(1f - haloT, 2.5f);
 
-                float intensity = parameters.Brightness * coreFalloff * envelope;
+                float intensity = parameters.Brightness * coreFalloff;
                 intensity += (float)(random.NextDouble() * 0.04 - 0.02);
                 intensity = Math.Clamp(intensity, 0.003f, float.MaxValue);
 
@@ -109,35 +106,6 @@ namespace GalaxyViewer
                 stars.Add(new Star(new Vector3(x, z, y), intensity, colorIndex));
             }
 
-            // Generate a sparse halo to diffuse the outer edge
-            var haloRandom = new Random(parameters.Seed + 2);
-            float haloOuterRadius = haloRadius * 1.2f;
-            for (int i = 0; i < haloStarCount; i++)
-            {
-                token.ThrowIfCancellationRequested();
-
-                float u = (float)haloRandom.NextDouble();
-                float radius = Lerp(diskRadius * 0.85f, haloOuterRadius, MathF.Pow(u, 0.6f));
-                radius += (float)(NextGaussian(haloRandom) * parameters.Noise * diskRadius * 0.1f);
-                radius = Math.Clamp(radius, diskRadius * 0.75f, haloOuterRadius);
-
-                float angle = (float)(haloRandom.NextDouble() * MathF.Tau);
-                float x = radius * MathF.Cos(angle);
-                float y = radius * MathF.Sin(angle);
-                float z = (float)(NextGaussian(haloRandom) * parameters.VerticalThickness * 1.2f);
-
-                float haloFade = Clamp((radius - diskRadius) / MathF.Max(0.001f, haloOuterRadius - diskRadius), 0f, 1f);
-                float haloIntensity = parameters.Brightness * 0.35f * MathF.Pow(1f - haloFade, 3f);
-                haloIntensity += (float)(haloRandom.NextDouble() * 0.02 - 0.01f);
-                haloIntensity = Math.Clamp(haloIntensity, 0.0015f, 0.2f);
-
-                float quantizedHalo = MathF.Pow(haloIntensity, 0.65f);
-                quantizedHalo += (float)(haloRandom.NextDouble() - 0.5f) * (1f / 255f);
-                byte haloColorIndex = (byte)Math.Clamp((int)MathF.Round(quantizedHalo * 255f), 0, 255);
-
-                stars.Add(new Star(new Vector3(x, z, y), haloIntensity, haloColorIndex));
-            }
-
             return stars;
         }
 
@@ -146,18 +114,6 @@ namespace GalaxyViewer
             double u1 = 1.0 - random.NextDouble();
             double u2 = 1.0 - random.NextDouble();
             return Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Cos(2.0 * Math.PI * u2);
-        }
-
-        private static float Clamp(float value, float min, float max)
-        {
-            if (value < min) return min;
-            if (value > max) return max;
-            return value;
-        }
-
-        private static float Lerp(float a, float b, float t)
-        {
-            return a + (b - a) * t;
         }
     }
 }
