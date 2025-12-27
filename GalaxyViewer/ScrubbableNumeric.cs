@@ -21,16 +21,22 @@ namespace GalaxyViewer
         private decimal _scrubStartValue;
         private const int ScrubActivationThreshold = 2; // pixels of movement before scrubbing starts
         private const int CornerRadius = 6;
+        private const int GripWidth = 16;
         private readonly Color _borderColor = Color.FromArgb(70, 70, 70);
-        private readonly Color _fillColor = Color.FromArgb(36, 36, 36);
-        private readonly Color _focusFillColor = Color.FromArgb(48, 48, 48);
+        private readonly Color _hoverBorderColor = Color.FromArgb(95, 120, 160);
+        private readonly Color _fillColor = Color.FromArgb(42, 42, 42);
+        private readonly Color _hoverFillColor = Color.FromArgb(48, 48, 54);
+        private readonly Color _focusFillColor = Color.FromArgb(50, 60, 80);
+        private readonly Color _gripColor = Color.FromArgb(80, 90, 110);
+        private readonly Color _accentColor = Color.FromArgb(78, 156, 255);
+        private bool _hovering;
 
         public event EventHandler? ValueChanged;
 
         public ScrubbableNumeric()
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
-            Padding = new Padding(6, 2, 6, 2);
+            Padding = new Padding(8, 3, GripWidth + 6, 3);
             BackColor = Color.Transparent;
 
             _textBox = new TextBox
@@ -38,7 +44,7 @@ namespace GalaxyViewer
                 Dock = DockStyle.Fill,
                 TextAlign = HorizontalAlignment.Right,
                 BackColor = _fillColor,
-                ForeColor = Color.WhiteSmoke,
+                ForeColor = Color.Gainsboro,
                 BorderStyle = BorderStyle.None,
                 Cursor = Cursors.SizeWE,
                 Margin = new Padding(0),
@@ -46,6 +52,8 @@ namespace GalaxyViewer
 
             Controls.Add(_textBox);
 
+            MouseEnter += (_, _) => { _hovering = true; Invalidate(); };
+            MouseLeave += (_, _) => { _hovering = false; Invalidate(); };
             _textBox.KeyDown += OnTextBoxKeyDown;
             _textBox.Leave += (_, _) =>
             {
@@ -58,6 +66,8 @@ namespace GalaxyViewer
                 _textBox.BackColor = _focusFillColor;
                 Invalidate();
             };
+            _textBox.MouseEnter += (_, _) => { _hovering = true; Invalidate(); };
+            _textBox.MouseLeave += (_, _) => { _hovering = false; Invalidate(); };
             _textBox.MouseWheel += HandleMouseWheel;
             _textBox.GotFocus += (_, _) => _textBox.Cursor = Cursors.IBeam;
             _textBox.LostFocus += (_, _) => _textBox.Cursor = Cursors.SizeWE;
@@ -317,11 +327,23 @@ namespace GalaxyViewer
             rect.Inflate(-1, -1);
 
             using var path = CreateRoundedRectangle(rect, CornerRadius);
-            var fill = _textBox.Focused ? _focusFillColor : _fillColor;
+            var fill = _textBox.Focused ? _focusFillColor : (_hovering ? _hoverFillColor : _fillColor);
             using var brush = new SolidBrush(fill);
-            using var pen = new Pen(_borderColor, 1f);
+            using var pen = new Pen(_textBox.Focused ? _accentColor : (_hovering ? _hoverBorderColor : _borderColor), 1f);
             e.Graphics.FillPath(brush, path);
             e.Graphics.DrawPath(pen, path);
+
+            var gripRect = new Rectangle(rect.Right - GripWidth, rect.Top + 2, GripWidth - 3, rect.Height - 4);
+            using var gripBrush = new LinearGradientBrush(gripRect, Color.FromArgb(30, _gripColor), Color.FromArgb(80, _gripColor), LinearGradientMode.Vertical);
+            e.Graphics.FillRectangle(gripBrush, gripRect);
+
+            using var gripPen = new Pen(_accentColor, 1f);
+            int centerX = gripRect.Left + GripWidth / 2 - 1;
+            for (int i = 0; i < 3; i++)
+            {
+                int y = gripRect.Top + 6 + (i * 8);
+                e.Graphics.DrawLine(gripPen, centerX - 1, y, centerX + 2, y);
+            }
         }
 
         protected override void OnResize(EventArgs e)
