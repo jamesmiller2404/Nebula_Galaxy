@@ -49,8 +49,8 @@ namespace GalaxyViewer
         private static readonly Color ControlSurfaceColor = Color.FromArgb(42, 42, 42);
         private static readonly Color SecondarySurfaceColor = Color.FromArgb(28, 28, 28);
         private static readonly Color HeaderTextColor = Color.FromArgb(210, 210, 210);
-        private const int BaseSidePanelWidth = 360;
-        private const float SidePanelScale = 3.5f;
+        private const float SidePanelScreenRatio = 1f / 6f;
+        private const int MinimumSidePanelWidth = 260;
         private const int TargetViewportWidth = 920;
         private const int StandardControlHeight = 30;
         private const int StandardRowHeight = 34;
@@ -68,7 +68,8 @@ namespace GalaxyViewer
         public MainForm()
         {
             Text = "Galaxy Viewer";
-            var sidePanelWidth = (int)(BaseSidePanelWidth * SidePanelScale);
+            var hostWidth = Screen.PrimaryScreen?.WorkingArea.Width ?? 1920;
+            var sidePanelWidth = Math.Max(MinimumSidePanelWidth, (int)(hostWidth * SidePanelScreenRatio));
             ClientSize = new Size(sidePanelWidth + TargetViewportWidth, 800);
             MinimumSize = new Size(Math.Max(1000, sidePanelWidth + 100), 700);
             StartPosition = FormStartPosition.CenterScreen;
@@ -88,13 +89,16 @@ namespace GalaxyViewer
             {
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Vertical,
-                SplitterDistance = sidePanelWidth,
-                Panel1MinSize = BaseSidePanelWidth,
+                Panel1MinSize = MinimumSidePanelWidth,
                 FixedPanel = FixedPanel.Panel1,
                 BackColor = PanelBackColor,
             };
 
             Controls.Add(split);
+            // Set after docking so we don't get clamped by the default control size.
+            split.SplitterDistance = Math.Max(
+                MinimumSidePanelWidth,
+                Math.Min(sidePanelWidth, split.Width - split.Panel2MinSize - split.SplitterWidth));
 
             var panelHost = new TableLayoutPanel
             {
