@@ -22,6 +22,8 @@ namespace GalaxyViewer
         private const int ScrubActivationThreshold = 2; // pixels of movement before scrubbing starts
         private const int CornerRadius = 6;
         private const int GripWidth = 16;
+        private const int StepperWidth = 14;
+        private const int StepperSpacing = 2;
         private readonly Color _borderColor = Color.FromArgb(70, 70, 70);
         private readonly Color _hoverBorderColor = Color.FromArgb(95, 120, 160);
         private readonly Color _fillColor = Color.FromArgb(42, 42, 42);
@@ -29,14 +31,21 @@ namespace GalaxyViewer
         private readonly Color _focusFillColor = Color.FromArgb(50, 60, 80);
         private readonly Color _gripColor = Color.FromArgb(80, 90, 110);
         private readonly Color _accentColor = Color.FromArgb(78, 156, 255);
+        private readonly Color _stepperFillColor = Color.FromArgb(55, 55, 60);
+        private readonly Color _stepperHoverColor = Color.FromArgb(64, 74, 94);
+        private readonly Color _stepperPressedColor = Color.FromArgb(82, 112, 160);
         private bool _hovering;
+        private bool _arrowUpHot;
+        private bool _arrowDownHot;
+        private bool _arrowUpPressed;
+        private bool _arrowDownPressed;
 
         public event EventHandler? ValueChanged;
 
         public ScrubbableNumeric()
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
-            Padding = new Padding(8, 3, GripWidth + 6, 3);
+            Padding = new Padding(8, 3, GripWidth + StepperWidth + 6, 3);
             BackColor = Color.Transparent;
 
             _textBox = new TextBox
@@ -266,6 +275,85 @@ namespace GalaxyViewer
             }
         }
 
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+
+            var rect = GetDrawingRect();
+            GetArrowRects(rect, out var upRect, out var downRect);
+
+            bool hotUp = upRect.Contains(e.Location);
+            bool hotDown = downRect.Contains(e.Location);
+            if (hotUp != _arrowUpHot || hotDown != _arrowDownHot)
+            {
+                _arrowUpHot = hotUp;
+                _arrowDownHot = hotDown;
+                Cursor = (_arrowUpHot || _arrowDownHot) ? Cursors.Hand : Cursors.IBeam;
+                Invalidate(Rectangle.Union(upRect, downRect));
+            }
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            base.OnMouseLeave(e);
+            if (_arrowUpHot || _arrowDownHot || _arrowUpPressed || _arrowDownPressed)
+            {
+                _arrowUpHot = _arrowDownHot = _arrowUpPressed = _arrowDownPressed = false;
+                Cursor = Cursors.IBeam;
+                Invalidate();
+            }
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            if (e.Button != MouseButtons.Left)
+            {
+                return;
+            }
+
+            var rect = GetDrawingRect();
+            GetArrowRects(rect, out var upRect, out var downRect);
+            _arrowUpPressed = upRect.Contains(e.Location);
+            _arrowDownPressed = !_arrowUpPressed && downRect.Contains(e.Location);
+            if (_arrowUpPressed || _arrowDownPressed)
+            {
+                _arrowUpHot = _arrowUpPressed;
+                _arrowDownHot = _arrowDownPressed;
+                Capture = true;
+                _textBox.Focus();
+                Invalidate(Rectangle.Union(upRect, downRect));
+            }
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (!_arrowUpPressed && !_arrowDownPressed)
+            {
+                return;
+            }
+
+            var rect = GetDrawingRect();
+            GetArrowRects(rect, out var upRect, out var downRect);
+            bool activateUp = _arrowUpPressed && upRect.Contains(e.Location);
+            bool activateDown = _arrowDownPressed && downRect.Contains(e.Location);
+
+            _arrowUpPressed = false;
+            _arrowDownPressed = false;
+            Capture = false;
+            Invalidate(Rectangle.Union(upRect, downRect));
+
+            if (activateUp)
+            {
+                Nudge(1);
+            }
+            else if (activateDown)
+            {
+                Nudge(-1);
+            }
+        }
+
         private void Nudge(int direction)
         {
             decimal scale = GetModifierScale();
@@ -323,8 +411,7 @@ namespace GalaxyViewer
             base.OnPaint(e);
 
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            var rect = ClientRectangle;
-            rect.Inflate(-1, -1);
+            var rect = GetDrawingRect();
 
             using var path = CreateRoundedRectangle(rect, CornerRadius);
             var fill = _textBox.Focused ? _focusFillColor : (_hovering ? _hoverFillColor : _fillColor);
@@ -333,7 +420,9 @@ namespace GalaxyViewer
             e.Graphics.FillPath(brush, path);
             e.Graphics.DrawPath(pen, path);
 
-            var gripRect = new Rectangle(rect.Right - GripWidth, rect.Top + 2, GripWidth - 3, rect.Height - 4);
+            DrawStepper(e.Graphics, rect);
+
+            var gripRect = GetGripRect(rect);
             using var gripBrush = new LinearGradientBrush(gripRect, Color.FromArgb(30, _gripColor), Color.FromArgb(80, _gripColor), LinearGradientMode.Vertical);
             e.Graphics.FillRectangle(gripBrush, gripRect);
 
@@ -350,6 +439,80 @@ namespace GalaxyViewer
         {
             base.OnResize(e);
             Invalidate();
+        }
+
+        private Rectangle GetDrawingRect()
+        {
+            var rect = ClientRectangle;
+            rect.Inflate(-1, -1);
+            return rect;
+        }
+
+        private Rectangle GetGripRect(Rectangle rect)
+        {
+            return new Rectangle(rect.Right - GripWidth, rect.Top + 2, GripWidth - 3, rect.Height - 4);
+        }
+
+        private Rectangle GetStepperRect(Rectangle rect)
+        {
+            return new Rectangle(rect.Right - GripWidth - StepperWidth - StepperSpacing, rect.Top + 2, StepperWidth, rect.Height - 4);
+        }
+
+        private void GetArrowRects(Rectangle rect, out Rectangle upRect, out Rectangle downRect)
+        {
+            var stepperRect = GetStepperRect(rect);
+            int halfHeight = stepperRect.Height / 2;
+            upRect = new Rectangle(stepperRect.Left, stepperRect.Top, stepperRect.Width, halfHeight);
+            downRect = new Rectangle(stepperRect.Left, stepperRect.Top + halfHeight, stepperRect.Width, stepperRect.Height - halfHeight);
+        }
+
+        private void DrawStepper(Graphics graphics, Rectangle rect)
+        {
+            GetArrowRects(rect, out var upRect, out var downRect);
+            var combined = Rectangle.Union(upRect, downRect);
+
+            DrawArrowButton(graphics, upRect, _arrowUpHot, _arrowUpPressed && _arrowUpHot, true);
+            DrawArrowButton(graphics, downRect, _arrowDownHot, _arrowDownPressed && _arrowDownHot, false);
+
+            using var borderPen = new Pen(_borderColor);
+            graphics.DrawRectangle(borderPen, new Rectangle(combined.X, combined.Y, combined.Width - 1, combined.Height - 1));
+            graphics.DrawLine(borderPen, combined.Left, upRect.Bottom, combined.Right - 1, upRect.Bottom);
+        }
+
+        private void DrawArrowButton(Graphics graphics, Rectangle rect, bool hot, bool pressed, bool up)
+        {
+            Color background = _stepperFillColor;
+            if (pressed)
+            {
+                background = _stepperPressedColor;
+            }
+            else if (hot)
+            {
+                background = _stepperHoverColor;
+            }
+
+            using var backgroundBrush = new SolidBrush(background);
+            graphics.FillRectangle(backgroundBrush, rect);
+            DrawArrowGlyph(graphics, rect, up, pressed ? Color.White : _accentColor);
+        }
+
+        private static void DrawArrowGlyph(Graphics graphics, Rectangle rect, bool up, Color color)
+        {
+            int midX = rect.Left + rect.Width / 2;
+            int halfWidth = Math.Max(2, Math.Min((rect.Width - 2) / 2, 5));
+            int arrowHeight = Math.Max(4, Math.Min(rect.Height - 4, 8));
+            int tipY = up ? rect.Top + 2 : rect.Bottom - 3;
+            int baseY = up ? tipY + arrowHeight : tipY - arrowHeight;
+
+            var points = new[]
+            {
+                new Point(midX, tipY),
+                new Point(midX - halfWidth, baseY),
+                new Point(midX + halfWidth, baseY),
+            };
+
+            using var arrowBrush = new SolidBrush(color);
+            graphics.FillPolygon(arrowBrush, points);
         }
 
         private static GraphicsPath CreateRoundedRectangle(Rectangle rect, int radius)
