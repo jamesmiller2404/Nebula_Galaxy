@@ -62,8 +62,6 @@ namespace GalaxyViewer
             _textBox.GotFocus += (_, _) => _textBox.Cursor = Cursors.IBeam;
             _textBox.LostFocus += (_, _) => _textBox.Cursor = Cursors.SizeWE;
 
-            MouseWheel += HandleMouseWheel;
-
             Minimum = 0m;
             Maximum = 100m;
             Increment = 1m;
@@ -126,7 +124,6 @@ namespace GalaxyViewer
             control.MouseDown += OnScrubStart;
             control.MouseMove += OnScrubMove;
             control.MouseUp += OnScrubEnd;
-            control.MouseWheel += HandleMouseWheel;
             control.Cursor = Cursors.SizeWE;
 
             // Allow scrubbing directly on the value like After Effects

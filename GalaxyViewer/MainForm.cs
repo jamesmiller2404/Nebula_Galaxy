@@ -27,6 +27,11 @@ namespace GalaxyViewer
         private readonly ScrubbableNumeric _coreFalloffBox;
         private readonly ScrubbableNumeric _brightnessBox;
         private readonly ScrubbableNumeric _seedBox;
+        private readonly ScrubbableNumeric _bulgeRadiusBox;
+        private readonly ScrubbableNumeric _bulgeStarCountBox;
+        private readonly ScrubbableNumeric _bulgeFalloffBox;
+        private readonly ScrubbableNumeric _bulgeVerticalScaleBox;
+        private readonly ScrubbableNumeric _bulgeBrightnessBox;
         private readonly ComboBox _presetBox;
         private readonly Button _resetButton;
         private readonly Button _randomizeSeedButton;
@@ -95,7 +100,7 @@ namespace GalaxyViewer
 
             _renderer = new GalaxyRenderer(_glControl);
 
-            _starCountBox = CreateNumeric(1000, 500000, _parameters.StarCount, 1000);
+            _starCountBox = CreateNumeric(1000, 5_000_000, _parameters.StarCount, 10_000);
             _armCountBox = CreateNumeric(1, 8, _parameters.ArmCount, 1);
             _armTwistBox = CreateNumeric(0, 12, (decimal)_parameters.ArmTwist, 0.1m, 1);
             _armSpreadBox = CreateNumeric(0, 1, (decimal)_parameters.ArmSpread, 0.01m, 2);
@@ -105,6 +110,12 @@ namespace GalaxyViewer
             _coreFalloffBox = CreateNumeric(0.1m, 6, (decimal)_parameters.CoreFalloff, 0.1m, 2);
             _brightnessBox = CreateNumeric(0.1m, 2.5m, (decimal)_parameters.Brightness, 0.05m, 2);
             _seedBox = CreateNumeric(0, 1000000, _parameters.Seed, 1);
+
+            _bulgeRadiusBox = CreateNumeric(0.1m, 20, (decimal)_parameters.BulgeRadius, 0.1m, 1);
+            _bulgeStarCountBox = CreateNumeric(0, 100000, _parameters.BulgeStarCount, 1000);
+            _bulgeFalloffBox = CreateNumeric(0.5m, 10, (decimal)_parameters.BulgeFalloff, 0.1m, 1);
+            _bulgeVerticalScaleBox = CreateNumeric(0.1m, 4, (decimal)_parameters.BulgeVerticalScale, 0.05m, 2);
+            _bulgeBrightnessBox = CreateNumeric(0.1m, 6, (decimal)_parameters.BulgeBrightness, 0.05m, 2);
 
             _presetBox = new ComboBox
             {
@@ -146,6 +157,14 @@ namespace GalaxyViewer
             AttachDragHandle("Core falloff", settingsPanel, _coreFalloffBox, row++);
             AttachDragHandle("Brightness", settingsPanel, _brightnessBox, row++);
             AttachDragHandle("Seed", settingsPanel, _seedBox, row++);
+
+            AddSeparator(settingsPanel, row++);
+
+            AttachDragHandle("Bulge radius", settingsPanel, _bulgeRadiusBox, row++);
+            AttachDragHandle("Bulge star count", settingsPanel, _bulgeStarCountBox, row++);
+            AttachDragHandle("Bulge falloff", settingsPanel, _bulgeFalloffBox, row++);
+            AttachDragHandle("Bulge vertical scale", settingsPanel, _bulgeVerticalScaleBox, row++);
+            AttachDragHandle("Bulge brightness", settingsPanel, _bulgeBrightnessBox, row++);
 
             settingsPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             settingsPanel.Controls.Add(_resetButton, 0, row);
@@ -218,6 +237,11 @@ namespace GalaxyViewer
             _coreFalloffBox.ValueChanged += OnParameterChanged;
             _brightnessBox.ValueChanged += OnParameterChanged;
             _seedBox.ValueChanged += OnParameterChanged;
+            _bulgeRadiusBox.ValueChanged += OnParameterChanged;
+            _bulgeStarCountBox.ValueChanged += OnParameterChanged;
+            _bulgeFalloffBox.ValueChanged += OnParameterChanged;
+            _bulgeVerticalScaleBox.ValueChanged += OnParameterChanged;
+            _bulgeBrightnessBox.ValueChanged += OnParameterChanged;
         }
 
         private void OnParameterChanged(object? sender, EventArgs e)
@@ -237,10 +261,13 @@ namespace GalaxyViewer
             _parameters.CoreFalloff = (float)_coreFalloffBox.Value;
             _parameters.Brightness = (float)_brightnessBox.Value;
             _parameters.Seed = (int)_seedBox.Value;
+            _parameters.BulgeRadius = (float)_bulgeRadiusBox.Value;
+            _parameters.BulgeStarCount = (int)_bulgeStarCountBox.Value;
+            _parameters.BulgeFalloff = (float)_bulgeFalloffBox.Value;
+            _parameters.BulgeVerticalScale = (float)_bulgeVerticalScaleBox.Value;
+            _parameters.BulgeBrightness = (float)_bulgeBrightnessBox.Value;
 
-            _regenTimer.Stop();
-            _regenTimer.Start();
-            _statusLabel.Text = "Pending update...";
+            RegenerateGalaxy();
         }
 
         private void LoadPreset(string name)
@@ -258,6 +285,11 @@ namespace GalaxyViewer
                     preset.Noise = 0.2f;
                     preset.CoreFalloff = 1.6f;
                     preset.Brightness = 1.1f;
+                    preset.BulgeRadius = 6f;
+                    preset.BulgeStarCount = 25000;
+                    preset.BulgeFalloff = 2.2f;
+                    preset.BulgeVerticalScale = 0.9f;
+                    preset.BulgeBrightness = 2.2f;
                     preset.Seed = _parameters.Seed;
                     break;
                 case "compact core":
@@ -270,6 +302,11 @@ namespace GalaxyViewer
                     preset.Noise = 0.18f;
                     preset.CoreFalloff = 2.5f;
                     preset.Brightness = 1.2f;
+                    preset.BulgeRadius = 7f;
+                    preset.BulgeStarCount = 30000;
+                    preset.BulgeFalloff = 2.5f;
+                    preset.BulgeVerticalScale = 0.7f;
+                    preset.BulgeBrightness = 2.5f;
                     preset.Seed = _parameters.Seed;
                     break;
                 case "diffuse arms":
@@ -282,6 +319,11 @@ namespace GalaxyViewer
                     preset.Noise = 0.35f;
                     preset.CoreFalloff = 1.8f;
                     preset.Brightness = 1.0f;
+                    preset.BulgeRadius = 4f;
+                    preset.BulgeStarCount = 15000;
+                    preset.BulgeFalloff = 1.8f;
+                    preset.BulgeVerticalScale = 1.0f;
+                    preset.BulgeBrightness = 1.8f;
                     preset.Seed = _parameters.Seed;
                     break;
                 default:
@@ -301,6 +343,11 @@ namespace GalaxyViewer
             SetValueClamped(_coreFalloffBox, (decimal)preset.CoreFalloff);
             SetValueClamped(_brightnessBox, (decimal)preset.Brightness);
             SetValueClamped(_seedBox, preset.Seed);
+            SetValueClamped(_bulgeRadiusBox, (decimal)preset.BulgeRadius);
+            SetValueClamped(_bulgeStarCountBox, preset.BulgeStarCount);
+            SetValueClamped(_bulgeFalloffBox, (decimal)preset.BulgeFalloff);
+            SetValueClamped(_bulgeVerticalScaleBox, (decimal)preset.BulgeVerticalScale);
+            SetValueClamped(_bulgeBrightnessBox, (decimal)preset.BulgeBrightness);
             _suppressEvents = false;
 
             RegenerateGalaxy();
@@ -361,11 +408,16 @@ namespace GalaxyViewer
             _regenCts = new CancellationTokenSource();
             var token = _regenCts.Token;
             var parameters = _parameters.Clone();
-            _statusLabel.Text = "Generating...";
+            _statusLabel.Text = $"Generating... Bulge: {parameters.BulgeStarCount}";
 
             Task.Run(() => _generator.Generate(parameters, token), token)
                 .ContinueWith(t =>
                 {
+                    if (token.IsCancellationRequested || _regenCts?.Token != token)
+                    {
+                        return;
+                    }
+
                     if (t.IsCanceled)
                     {
                         return;

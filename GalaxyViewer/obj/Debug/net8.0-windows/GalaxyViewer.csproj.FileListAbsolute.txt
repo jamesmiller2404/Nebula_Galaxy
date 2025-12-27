@@ -30,3 +30,4 @@ C:\Users\rober\Desktop\Nebula_Galaxy\GalaxyViewer\obj\Debug\net8.0-windows\refin
 C:\Users\rober\Desktop\Nebula_Galaxy\GalaxyViewer\obj\Debug\net8.0-windows\GalaxyViewer.pdb
 C:\Users\rober\Desktop\Nebula_Galaxy\GalaxyViewer\obj\Debug\net8.0-windows\GalaxyViewer.genruntimeconfig.cache
 C:\Users\rober\Desktop\Nebula_Galaxy\GalaxyViewer\obj\Debug\net8.0-windows\ref\GalaxyViewer.dll
+C:\Users\rober\Desktop\Nebula_Galaxy\GalaxyViewer\obj\Debug\net8.0-windows\GalaxyViewer.sourcelink.json
