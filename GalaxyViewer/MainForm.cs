@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Globalization;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -46,17 +48,21 @@ namespace GalaxyViewer
         private readonly System.Windows.Forms.Timer _regenTimer;
         private readonly Dictionary<string, GalaxyParameters> _presetLibrary;
         private readonly string[] _presetNames;
+        private readonly SplitContainer _split;
+        private readonly string _uiStatePath;
+        private int _savedSplitterDistance;
         private static readonly Color PanelBackColor = Color.FromArgb(32, 32, 32);
         private static readonly Color PanelBorderColor = Color.FromArgb(55, 55, 55);
         private static readonly Color AccentColor = Color.FromArgb(78, 156, 255);
         private static readonly Color ControlSurfaceColor = Color.FromArgb(42, 42, 42);
         private static readonly Color SecondarySurfaceColor = Color.FromArgb(28, 28, 28);
         private static readonly Color HeaderTextColor = Color.FromArgb(210, 210, 210);
-        private const float SidePanelScreenRatio = 1f / 6f;
-        private const int MinimumSidePanelWidth = 260;
+        private const float SidePanelScreenRatio = 0.28f;
+        private const int MinimumSidePanelWidth = 320;
         private const int TargetViewportWidth = 920;
-        private const int StandardControlHeight = 30;
-        private const int StandardRowHeight = 34;
+        private const int StandardControlHeight = 32;
+        private const int StandardRowHeight = 36;
+        private const int PanelComfortPadding = 28;
 
         private bool _suppressEvents;
         private bool _dragging;
@@ -71,6 +77,8 @@ namespace GalaxyViewer
         public MainForm()
         {
             Text = "Galaxy Viewer";
+            _uiStatePath = Path.Combine(Application.UserAppDataPath, "ui-state.txt");
+            _savedSplitterDistance = LoadSavedSplitterDistance();
             var hostWidth = Screen.PrimaryScreen?.WorkingArea.Width ?? 1920;
             var sidePanelWidth = Math.Max(MinimumSidePanelWidth, (int)(hostWidth * SidePanelScreenRatio));
             ClientSize = new Size(sidePanelWidth + TargetViewportWidth, 800);
@@ -98,7 +106,7 @@ namespace GalaxyViewer
                 _presetNames[i] = name;
             }
 
-            var split = new SplitContainer
+            _split = new SplitContainer
             {
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Vertical,
@@ -107,24 +115,21 @@ namespace GalaxyViewer
                 BackColor = PanelBackColor,
             };
 
-            Controls.Add(split);
-            // Set after docking so we don't get clamped by the default control size.
-            split.SplitterDistance = Math.Max(
-                MinimumSidePanelWidth,
-                Math.Min(sidePanelWidth, split.Width - split.Panel2MinSize - split.SplitterWidth));
+            Controls.Add(_split);
+            _split.SplitterMoved += (_, _) => SaveSplitterDistance();
 
             var panelHost = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 2,
-                Padding = new Padding(12, 10, 12, 10),
+                Padding = new Padding(14, 12, 14, 12),
                 BackColor = PanelBackColor,
             };
             panelHost.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             panelHost.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-            split.Panel1.Controls.Add(panelHost);
-            split.Panel1.BackColor = PanelBackColor;
+            _split.Panel1.Controls.Add(panelHost);
+            _split.Panel1.BackColor = PanelBackColor;
 
             _glControl = new GLControl(new GLControlSettings
             {
@@ -139,7 +144,7 @@ namespace GalaxyViewer
                 Dock = DockStyle.Fill,
                 BackColor = Color.Black,
             };
-            split.Panel2.Controls.Add(_glControl);
+            _split.Panel2.Controls.Add(_glControl);
             _helpOverlay = new Label
             {
                 AutoSize = false,
@@ -301,8 +306,8 @@ namespace GalaxyViewer
                 Padding = new Padding(0, 0, 0, 10),
                 BackColor = PanelBackColor,
             };
-            _settingsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40f));
-            _settingsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60f));
+            _settingsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _settingsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
 
             panelHost.Controls.Add(presetContainer, 0, 0);
             panelHost.Controls.Add(_settingsPanel, 0, 1);
@@ -338,6 +343,7 @@ namespace GalaxyViewer
 
             HookEvents();
             SetupPresetTooltips(presetLabel);
+            _split.SplitterDistance = ComputeInitialSplitterDistance(sidePanelWidth, panelHost);
         }
 
         private void HookEvents()
@@ -402,6 +408,75 @@ namespace GalaxyViewer
             _bulgeFalloffBox.ValueChanged += OnParameterChanged;
             _bulgeVerticalScaleBox.ValueChanged += OnParameterChanged;
             _bulgeBrightnessBox.ValueChanged += OnParameterChanged;
+        }
+
+        private int ComputeInitialSplitterDistance(int sidePanelWidth, TableLayoutPanel? panelHost)
+        {
+            int baseWidth = Math.Max(MinimumSidePanelWidth, Math.Min(sidePanelWidth, ClientSize.Width - TargetViewportWidth));
+            int preferred = panelHost != null ? GetPreferredPanelWidth(panelHost) : baseWidth;
+            int requested = Math.Max(baseWidth, preferred);
+            if (_savedSplitterDistance > 0)
+            {
+                requested = _savedSplitterDistance;
+            }
+
+            return ClampSplitterDistance(requested);
+        }
+
+        private int GetPreferredPanelWidth(TableLayoutPanel panelHost)
+        {
+            int preferred = panelHost.GetPreferredSize(new Size(int.MaxValue, ClientSize.Height)).Width;
+            return Math.Max(MinimumSidePanelWidth, preferred + PanelComfortPadding);
+        }
+
+        private int ClampSplitterDistance(int requested)
+        {
+            int max = Math.Max(MinimumSidePanelWidth, ClientSize.Width - TargetViewportWidth);
+            if (_split.Width > 0)
+            {
+                max = Math.Min(max, _split.Width - _split.SplitterWidth - 200);
+            }
+
+            return Math.Max(MinimumSidePanelWidth, Math.Min(requested, max));
+        }
+
+        private int LoadSavedSplitterDistance()
+        {
+            try
+            {
+                if (File.Exists(_uiStatePath))
+                {
+                    var raw = File.ReadAllText(_uiStatePath).Trim();
+                    if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
+                    {
+                        return value;
+                    }
+                }
+            }
+            catch
+            {
+                // Persistence is best-effort only.
+            }
+
+            return -1;
+        }
+
+        private void SaveSplitterDistance()
+        {
+            try
+            {
+                var directory = Path.GetDirectoryName(_uiStatePath);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                File.WriteAllText(_uiStatePath, ClampSplitterDistance(_split.SplitterDistance).ToString(CultureInfo.InvariantCulture));
+            }
+            catch
+            {
+                // Persistence is best-effort only.
+            }
         }
 
         private void OnParameterChanged(object? sender, EventArgs e)
@@ -1246,7 +1321,7 @@ namespace GalaxyViewer
                 Increment = increment,
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 2, 0, 2),
-                MinimumSize = new Size(0, StandardControlHeight),
+                MinimumSize = new Size(140, StandardControlHeight),
             };
         }
 
@@ -1262,6 +1337,7 @@ namespace GalaxyViewer
                 Padding = new Padding(0, 2, 0, 0),
                 Margin = new Padding(0, 4, 8, 4),
                 ForeColor = Color.Gainsboro,
+                MinimumSize = new Size(140, 0),
             };
             panel.Controls.Add(lbl, 0, row);
             panel.Controls.Add(control, 1, row);
@@ -1310,6 +1386,7 @@ namespace GalaxyViewer
                 Padding = new Padding(0, 2, 0, 0),
                 Margin = new Padding(0, 4, 8, 4),
                 ForeColor = Color.Gainsboro,
+                MinimumSize = new Size(140, 0),
             };
 
             var seedRow = new TableLayoutPanel
@@ -1433,6 +1510,7 @@ namespace GalaxyViewer
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            SaveSplitterDistance();
             base.OnFormClosing(e);
             _regenCts?.Cancel();
             _renderer.Dispose();

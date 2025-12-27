@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GalaxyViewer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c2e64f2859cd46e6a61ed818f7a3955bb3b6984d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+74ffda91279ad024e87210a4fd2b3c9bc5c2607c")]
 [assembly: System.Reflection.AssemblyProductAttribute("GalaxyViewer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GalaxyViewer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

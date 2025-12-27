@@ -47,6 +47,7 @@ namespace GalaxyViewer
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
             Padding = new Padding(8, 3, GripWidth + StepperWidth + 6, 3);
             BackColor = Color.Transparent;
+            MinimumSize = new Size(120, 28);
 
             _textBox = new TextBox
             {
@@ -196,6 +197,12 @@ namespace GalaxyViewer
 
         private void HandleMouseWheel(object? sender, MouseEventArgs e)
         {
+            // Only react to wheel when the control is focused or actively scrubbing to avoid accidental changes while scrolling past
+            if (!_scrubbing && !_textBox.Focused && !Focused)
+            {
+                return;
+            }
+
             int steps = e.Delta / SystemInformation.MouseWheelScrollDelta;
             if (steps == 0)
             {
