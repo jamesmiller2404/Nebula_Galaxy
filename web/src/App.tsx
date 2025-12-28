@@ -4,45 +4,17 @@ import { findPreset, presets } from "@domain/presets";
 import { GalaxyRenderer } from "@gl/renderer";
 import "./styles.css";
 
-type ThemeName = "Nebula" | "Monochrome";
-
-const themes: Record<
-  ThemeName,
-  {
-    name: ThemeName;
-    vars: Record<string, string>;
-  }
-> = {
-  Nebula: {
-    name: "Nebula",
-    vars: {
-      "--bg": "#0a0f1b",
-      "--panel": "#111827",
-      "--panel-border": "#1f2937",
-      "--accent": "#ff8c5a",
-      "--accent-2": "#5eead4",
-      "--text": "#e5e7eb",
-      "--muted": "#9ca3af",
-      "--input": "#0f172a",
-      "--input-border": "#1f2937",
-      "--glow": "rgba(255, 140, 90, 0.24)"
-    }
-  },
-  Monochrome: {
-    name: "Monochrome",
-    vars: {
-      "--bg": "#111111",
-      "--panel": "#1a1a1a",
-      "--panel-border": "#262626",
-      "--accent": "#5ea0ff",
-      "--accent-2": "#9ae6b4",
-      "--text": "#f3f4f6",
-      "--muted": "#9ca3af",
-      "--input": "#0f0f0f",
-      "--input-border": "#262626",
-      "--glow": "rgba(94, 160, 255, 0.2)"
-    }
-  }
+const nebulaThemeVars: Record<string, string> = {
+  "--bg": "#0a0f1b",
+  "--panel": "#111827",
+  "--panel-border": "#1f2937",
+  "--accent": "#ff8c5a",
+  "--accent-2": "#5eead4",
+  "--text": "#e5e7eb",
+  "--muted": "#9ca3af",
+  "--input": "#0f172a",
+  "--input-border": "#1f2937",
+  "--glow": "rgba(255, 140, 90, 0.24)"
 };
 
 type WorkerResult =
@@ -62,18 +34,16 @@ export default function App() {
   const currentRequestId = useRef(0);
   const [params, setParams] = useState<GalaxyParameters>({ ...defaultParameters });
   const [presetName, setPresetName] = useState<string>("Default");
-  const [theme, setTheme] = useState<ThemeName>("Nebula");
   const [status, setStatus] = useState("Ready");
   const [generating, setGenerating] = useState(false);
   const [rendererReady, setRendererReady] = useState(false);
 
   // Apply theme tokens to CSS variables
   useEffect(() => {
-    const vars = themes[theme].vars;
-    Object.entries(vars).forEach(([key, value]) => {
+    Object.entries(nebulaThemeVars).forEach(([key, value]) => {
       document.documentElement.style.setProperty(key, value);
     });
-  }, [theme]);
+  }, []);
 
   // Init renderer
   useEffect(() => {
@@ -214,20 +184,15 @@ export default function App() {
 
   return (
     <div className="page">
-      <header className="masthead">
-        <div>
-          <div className="eyebrow">Galaxy Viewer</div>
-          <h1>Web Client</h1>
-          <p className="lede">
-            Interactive browser build that mirrors the WinForms app: WebGL2 rendering, presets, and
-            scrubbable controls.
-          </p>
-          <div className="status">
-            {status}
-            {generating ? " - working..." : ""}
-          </div>
+      <header className="title-banner">
+        <div className="title-text">
+          <h1>Nebula Galaxy</h1>
+          <p className="title-subtitle">Procedural galaxy viewer (web)</p>
         </div>
-        <div className="badge">web</div>
+        <div className="title-status">
+          {status}
+          {generating ? " - working..." : ""}
+        </div>
       </header>
 
       <div className="layout">
@@ -263,20 +228,6 @@ export default function App() {
                     <option key={name}>{name}</option>
                   ))}
                 </select>
-              </div>
-              <div className="stack">
-                <label className="small-label">Theme</label>
-                <div className="chip-row">
-                  {Object.keys(themes).map((name) => (
-                    <button
-                      key={name}
-                      className={`chip ${theme === name ? "chip-active" : ""}`}
-                      onClick={() => setTheme(name as ThemeName)}
-                    >
-                      {name}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               <div className="stack">
