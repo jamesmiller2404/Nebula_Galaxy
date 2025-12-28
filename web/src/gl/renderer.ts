@@ -61,6 +61,7 @@ export class GalaxyRenderer {
     const gl = this.gl;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
     gl.bufferData(gl.ARRAY_BUFFER, buffer.data, gl.DYNAMIC_DRAW);
+    this.render();
   }
 
   resize() {
@@ -95,6 +96,16 @@ export class GalaxyRenderer {
     gl.bindVertexArray(this.vao);
     gl.drawArrays(gl.POINTS, 0, this.starCount);
     gl.bindVertexArray(null);
+  }
+
+  orbit(deltaX: number, deltaY: number) {
+    this.camera.rotate(deltaX, deltaY);
+    this.render();
+  }
+
+  zoom(delta: number) {
+    this.camera.zoom(delta);
+    this.render();
   }
 
   dispose() {
