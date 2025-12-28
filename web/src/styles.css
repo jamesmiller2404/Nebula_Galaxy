@@ -145,7 +145,7 @@ h1 {
 
 .viewport {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 1 / 1;
   display: block;
   border: none;
   touch-action: none;
