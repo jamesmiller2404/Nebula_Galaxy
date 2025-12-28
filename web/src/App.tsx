@@ -241,6 +241,14 @@ export default function App() {
 
         <section className="panel">
           <div className="panel-heading">Controls</div>
+          <div className="scrub-hint">
+            <span className="scrub-handle" aria-hidden="true">
+              {"<>"}
+            </span>
+            <div className="scrub-text">
+              Drag any label to scrub values. Hold Shift for 10x steps and Alt for 0.1x precision.
+            </div>
+          </div>
           <div className="toolbar">
             <div className="stack">
               <label className="small-label">Preset</label>
@@ -522,8 +530,18 @@ function NumericField({
 
   return (
     <label className="field">
-      <div className="field-label" onPointerDown={handlePointerDown} title="Drag to scrub. Shift=10x, Alt=0.1x.">
-        {label}
+      <div
+        className="field-label"
+        onPointerDown={handlePointerDown}
+        title="Drag to scrub. Shift=10x, Alt=0.1x."
+      >
+        <span className="scrub-handle" aria-hidden="true">
+          {"<>"}
+        </span>
+        <span className="field-label-text">{label}</span>
+        <span className="scrub-pill" aria-hidden="true">
+          drag
+        </span>
       </div>
       <div className="field-input">
         <input
