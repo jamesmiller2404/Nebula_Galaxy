@@ -82,6 +82,7 @@ h1 {
   display: grid;
   grid-template-columns: 1.1fr 1fr;
   gap: 16px;
+  align-items: start;
 }
 
 .panel {
@@ -90,6 +91,20 @@ h1 {
   background: var(--panel);
   padding: 16px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.controls-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 220px);
+}
+
+.controls-scroll {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
 }
 
 .panel-heading {
@@ -335,4 +350,5 @@ h1 {
   .layout { grid-template-columns: 1fr; }
   .masthead { flex-direction: column; }
   h1 { font-size: 24px; }
+  .controls-panel { max-height: none; }
 }
