@@ -1,0 +1,122 @@
+:root {
+  color-scheme: dark;
+  --bg: #0a0f1b;
+  --panel: #111827;
+  --panel-border: #1f2937;
+  --accent: #ff8c5a;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --glow: rgba(255, 140, 90, 0.2);
+  font-family: "Space Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at 20% 20%, rgba(255, 140, 90, 0.06), transparent 35%),
+    radial-gradient(circle at 80% 10%, rgba(94, 234, 212, 0.08), transparent 30%),
+    var(--bg);
+  color: var(--text);
+}
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.masthead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 18px;
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  background: linear-gradient(120deg, rgba(255, 140, 90, 0.08), rgba(17, 24, 39, 0.7));
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+h1 {
+  margin: 0 0 6px 0;
+  font-size: 28px;
+}
+
+.lede {
+  margin: 0 0 10px 0;
+  color: var(--muted);
+  max-width: 70ch;
+}
+
+.status {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.badge {
+  padding: 8px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  font-weight: 600;
+}
+
+.panel {
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.panel-heading {
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.viewport {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: #000;
+  display: block;
+}
+
+.hint {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.parameters {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--muted);
+  font-family: "Space Grotesk", "Segoe UI", system-ui, -apple-system, monospace;
+}
+
+.note {
+  color: var(--muted);
+  margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .masthead { flex-direction: column; }
+  h1 { font-size: 24px; }
+}
