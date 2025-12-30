@@ -31,6 +31,15 @@ export class Camera {
     const proj = mat4.create();
     return mat4.perspective(proj, deg2rad(60), Math.max(0.1, aspect), 0.1, 1000);
   }
+
+  getAngles() {
+    return { yaw: this.yaw, pitch: this.pitch };
+  }
+
+  setAngles(yaw: number, pitch: number) {
+    this.yaw = yaw;
+    this.pitch = clamp(pitch, -1.45, 1.45);
+  }
 }
 
 function deg2rad(v: number) {

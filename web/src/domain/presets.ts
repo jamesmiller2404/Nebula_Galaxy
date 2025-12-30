@@ -24,7 +24,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.6,
       bulgeVerticalScale: 1.2,
       bulgeBrightness: 3.2,
-      seed: 12345
     }
   },
   {
@@ -44,7 +43,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.1,
       bulgeVerticalScale: 0.8,
       bulgeBrightness: 2.8,
-      seed: 12345
     }
   },
   {
@@ -64,7 +62,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.4,
       bulgeVerticalScale: 0.9,
       bulgeBrightness: 2.8,
-      seed: 12345
     }
   },
   {
@@ -84,7 +81,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.2,
       bulgeVerticalScale: 0.8,
       bulgeBrightness: 2.4,
-      seed: 12345
     }
   },
   {
@@ -104,7 +100,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.0,
       bulgeVerticalScale: 0.7,
       bulgeBrightness: 2.0,
-      seed: 12345
     }
   },
   {
@@ -124,7 +119,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.6,
       bulgeVerticalScale: 0.6,
       bulgeBrightness: 1.7,
-      seed: 12345
     }
   },
   {
@@ -144,7 +138,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.6,
       bulgeVerticalScale: 1.0,
       bulgeBrightness: 3.0,
-      seed: 12345
     }
   },
   {
@@ -164,7 +157,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.2,
       bulgeVerticalScale: 0.9,
       bulgeBrightness: 2.6,
-      seed: 12345
     }
   },
   {
@@ -184,7 +176,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.0,
       bulgeVerticalScale: 0.8,
       bulgeBrightness: 2.2,
-      seed: 12345
     }
   },
   {
@@ -204,7 +195,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.7,
       bulgeVerticalScale: 0.7,
       bulgeBrightness: 1.9,
-      seed: 12345
     }
   },
   {
@@ -224,7 +214,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.2,
       bulgeVerticalScale: 1.1,
       bulgeBrightness: 1.3,
-      seed: 12345
     }
   },
   {
@@ -244,7 +233,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.0,
       bulgeVerticalScale: 1.2,
       bulgeBrightness: 1.4,
-      seed: 12345
     }
   },
   {
@@ -264,7 +252,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.2,
       bulgeVerticalScale: 0.9,
       bulgeBrightness: 1.6,
-      seed: 12345
     }
   },
   {
@@ -284,7 +271,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.4,
       bulgeVerticalScale: 1.0,
       bulgeBrightness: 1.2,
-      seed: 12345
     }
   },
   {
@@ -304,7 +290,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.2,
       bulgeVerticalScale: 1.1,
       bulgeBrightness: 1.1,
-      seed: 12345
     }
   },
   {
@@ -324,7 +309,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.8,
       bulgeVerticalScale: 0.8,
       bulgeBrightness: 1.5,
-      seed: 12345
     }
   },
   {
@@ -344,7 +328,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.4,
       bulgeVerticalScale: 1.1,
       bulgeBrightness: 2.0,
-      seed: 12345
     }
   },
   {
@@ -364,7 +347,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.5,
       bulgeVerticalScale: 0.9,
       bulgeBrightness: 1.1,
-      seed: 12345
     }
   },
   {
@@ -384,7 +366,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.3,
       bulgeVerticalScale: 1.2,
       bulgeBrightness: 1.0,
-      seed: 12345
     }
   },
   {
@@ -404,7 +385,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.6,
       bulgeVerticalScale: 0.9,
       bulgeBrightness: 3.5,
-      seed: 12345
     }
   },
   {
@@ -424,7 +404,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.0,
       bulgeVerticalScale: 1.0,
       bulgeBrightness: 6.0,
-      seed: 12345
     }
   },
   {
@@ -444,7 +423,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.8,
       bulgeVerticalScale: 1.6,
       bulgeBrightness: 5.0,
-      seed: 12345
     }
   },
   {
@@ -464,7 +442,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.7,
       bulgeVerticalScale: 1.1,
       bulgeBrightness: 3.2,
-      seed: 12345
     }
   },
   {
@@ -484,7 +461,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.4,
       bulgeVerticalScale: 0.9,
       bulgeBrightness: 2.8,
-      seed: 12345
     }
   },
   {
@@ -504,7 +480,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.6,
       bulgeVerticalScale: 1.0,
       bulgeBrightness: 3.5,
-      seed: 12345
     }
   },
   {
@@ -524,7 +499,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.0,
       bulgeVerticalScale: 1.0,
       bulgeBrightness: 2.2,
-      seed: 12345
     }
   },
   {
@@ -544,7 +518,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.3,
       bulgeVerticalScale: 1.2,
       bulgeBrightness: 3.0,
-      seed: 12345
     }
   },
   {
@@ -564,7 +537,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.4,
       bulgeVerticalScale: 1.1,
       bulgeBrightness: 2.8,
-      seed: 12345
     }
   },
   {
@@ -584,7 +556,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.7,
       bulgeVerticalScale: 0.8,
       bulgeBrightness: 2.0,
-      seed: 12345
     }
   },
   {
@@ -604,7 +575,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.3,
       bulgeVerticalScale: 0.9,
       bulgeBrightness: 2.5,
-      seed: 12345
     }
   },
   {
@@ -624,7 +594,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.8,
       bulgeVerticalScale: 0.8,
       bulgeBrightness: 1.6,
-      seed: 12345
     }
   },
   {
@@ -644,7 +613,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.2,
       bulgeVerticalScale: 0.9,
       bulgeBrightness: 2.2,
-      seed: 12345
     }
   },
   {
@@ -664,7 +632,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 2.5,
       bulgeVerticalScale: 0.7,
       bulgeBrightness: 2.5,
-      seed: 12345
     }
   },
   {
@@ -684,7 +651,6 @@ export const presets: Preset[] = [
       bulgeFalloff: 1.8,
       bulgeVerticalScale: 1.0,
       bulgeBrightness: 1.8,
-      seed: 12345
     }
   }
 ];

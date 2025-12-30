@@ -10,7 +10,7 @@ export async function generateStars(
   params: GalaxyParameters,
   signal?: AbortSignal
 ): Promise<StarBuffer> {
-  const random = seededRandom(params.seed);
+  const random = Math.random;
   const stars: number[] = [];
   const diskRadius = Math.max(1, params.diskRadius);
   const diskEdge = diskRadius * 0.98;
@@ -48,7 +48,7 @@ export async function generateStars(
   }
 
   // Bulge
-  const bulgeRand = seededRandom(params.seed + 1);
+  const bulgeRand = Math.random;
   const bulgeRadius = Math.max(0.1, params.bulgeRadius);
   const rMin = 0.1;
   const invRMin = 1 / rMin;
@@ -80,17 +80,6 @@ export async function generateStars(
 
   const data = new Float32Array(stars);
   return { data, count: data.length / 5 };
-}
-
-function seededRandom(seed: number) {
-  let s = seed >>> 0;
-  return () => {
-    s |= 0;
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 function clamp(v: number, min: number, max: number) {

@@ -108,6 +108,15 @@ export class GalaxyRenderer {
     this.render();
   }
 
+  setAngles(yaw: number, pitch: number) {
+    this.camera.setAngles(yaw, pitch);
+    this.render();
+  }
+
+  getAngles() {
+    return this.camera.getAngles();
+  }
+
   dispose() {
     const gl = this.gl;
     gl.deleteProgram(this.program);

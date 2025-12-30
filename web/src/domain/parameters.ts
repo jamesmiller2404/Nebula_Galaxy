@@ -8,7 +8,6 @@ export interface GalaxyParameters {
   noise: number;
   coreFalloff: number;
   brightness: number;
-  seed: number;
   bulgeRadius: number;
   bulgeStarCount: number;
   bulgeFalloff: number;
@@ -26,7 +25,6 @@ export const defaultParameters: GalaxyParameters = {
   noise: 0.25,
   coreFalloff: 2,
   brightness: 1,
-  seed: 12345,
   bulgeRadius: 5,
   bulgeStarCount: 20000,
   bulgeFalloff: 2,

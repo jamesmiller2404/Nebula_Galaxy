@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -15,6 +16,103 @@ namespace GalaxyViewer
 {
     public class MainForm : Form
     {
+        private sealed class UiTheme
+        {
+            public string Name { get; }
+            public Color PanelBackColor { get; }
+            public Color PanelBorderColor { get; }
+            public Color AccentColor { get; }
+            public Color ControlSurfaceColor { get; }
+            public Color SecondarySurfaceColor { get; }
+            public Color HeaderTextColor { get; }
+            public Color TextColor { get; }
+            public Color InputBackColor { get; }
+            public Color ButtonBackColor { get; }
+            public Color ButtonHoverColor { get; }
+            public Color ButtonDownColor { get; }
+            public Color TooltipBackColor { get; }
+            public Color TooltipForeColor { get; }
+            public Color OverlayBackColor { get; }
+            public Color PresetGlowColor { get; }
+            public ScrubbableNumericTheme NumericTheme { get; }
+
+            private UiTheme(
+                string name,
+                Color panelBackColor,
+                Color panelBorderColor,
+                Color accentColor,
+                Color controlSurfaceColor,
+                Color secondarySurfaceColor,
+                Color headerTextColor,
+                Color textColor,
+                Color inputBackColor,
+                Color buttonBackColor,
+                Color buttonHoverColor,
+                Color buttonDownColor,
+                Color tooltipBackColor,
+                Color tooltipForeColor,
+                Color overlayBackColor,
+                Color presetGlowColor,
+                ScrubbableNumericTheme numericTheme)
+            {
+                Name = name;
+                PanelBackColor = panelBackColor;
+                PanelBorderColor = panelBorderColor;
+                AccentColor = accentColor;
+                ControlSurfaceColor = controlSurfaceColor;
+                SecondarySurfaceColor = secondarySurfaceColor;
+                HeaderTextColor = headerTextColor;
+                TextColor = textColor;
+                InputBackColor = inputBackColor;
+                ButtonBackColor = buttonBackColor;
+                ButtonHoverColor = buttonHoverColor;
+                ButtonDownColor = buttonDownColor;
+                TooltipBackColor = tooltipBackColor;
+                TooltipForeColor = tooltipForeColor;
+                OverlayBackColor = overlayBackColor;
+                PresetGlowColor = presetGlowColor;
+                NumericTheme = numericTheme;
+            }
+
+            public static readonly UiTheme Monochrome = new(
+                "Monochrome",
+                Color.FromArgb(32, 32, 32),
+                Color.FromArgb(55, 55, 55),
+                Color.FromArgb(78, 156, 255),
+                Color.FromArgb(42, 42, 42),
+                Color.FromArgb(28, 28, 28),
+                Color.FromArgb(210, 210, 210),
+                Color.Gainsboro,
+                Color.FromArgb(36, 36, 36),
+                Color.FromArgb(45, 45, 45),
+                Color.FromArgb(60, 60, 60),
+                Color.FromArgb(55, 55, 55),
+                Color.FromArgb(48, 48, 48),
+                Color.WhiteSmoke,
+                Color.FromArgb(150, 16, 16, 16),
+                Color.FromArgb(30, 30, 30),
+                ScrubbableNumericTheme.Monochrome);
+
+            public static readonly UiTheme Nebula = new(
+                "Nebula",
+                Color.FromArgb(10, 14, 24),
+                Color.FromArgb(36, 56, 78),
+                Color.FromArgb(255, 140, 90),
+                Color.FromArgb(18, 22, 38),
+                Color.FromArgb(14, 18, 30),
+                Color.FromArgb(235, 242, 255),
+                Color.FromArgb(220, 228, 240),
+                Color.FromArgb(20, 26, 44),
+                Color.FromArgb(26, 32, 52),
+                Color.FromArgb(40, 52, 82),
+                Color.FromArgb(30, 42, 70),
+                Color.FromArgb(24, 32, 50),
+                Color.FromArgb(230, 236, 246),
+                Color.FromArgb(150, 10, 14, 26),
+                Color.FromArgb(18, 30, 54),
+                ScrubbableNumericTheme.Nebula);
+        }
+
         private readonly GLControl _glControl;
         private readonly GalaxyRenderer _renderer;
         private readonly GalaxyGenerator _generator = new();
@@ -37,26 +135,33 @@ namespace GalaxyViewer
         private readonly ScrubbableNumeric _bulgeVerticalScaleBox;
         private readonly ScrubbableNumeric _bulgeBrightnessBox;
         private readonly ComboBox _presetBox;
+        private readonly ComboBox _themeBox;
         private readonly Button _resetButton;
         private readonly Button _randomizeSeedButton;
         private readonly Label _statusLabel;
+        private readonly Label _presetLabel;
+        private readonly Label _themeLabel;
         private readonly TableLayoutPanel _settingsPanel;
+        private readonly TableLayoutPanel _panelHost;
+        private readonly TableLayoutPanel _presetCard;
         private readonly Panel _presetPreview;
+        private readonly Panel _presetContainer;
+        private readonly Panel _statusPanel;
         private readonly ToolTip _toolTip;
         private readonly Label _helpOverlay;
+        private readonly FlowLayoutPanel _zoomPanel;
+        private readonly Button _zoomInButton;
+        private readonly Button _zoomOutButton;
         private readonly System.Windows.Forms.Timer _helpTimer;
         private readonly System.Windows.Forms.Timer _regenTimer;
         private readonly Dictionary<string, GalaxyParameters> _presetLibrary;
         private readonly string[] _presetNames;
         private readonly SplitContainer _split;
+        private readonly UiTheme[] _themes = new[] { UiTheme.Monochrome, UiTheme.Nebula };
+        private readonly List<ScrubbableNumeric> _numericControls = new();
         private readonly string _uiStatePath;
+        private UiTheme _theme = UiTheme.Monochrome;
         private int _savedSplitterDistance;
-        private static readonly Color PanelBackColor = Color.FromArgb(32, 32, 32);
-        private static readonly Color PanelBorderColor = Color.FromArgb(55, 55, 55);
-        private static readonly Color AccentColor = Color.FromArgb(78, 156, 255);
-        private static readonly Color ControlSurfaceColor = Color.FromArgb(42, 42, 42);
-        private static readonly Color SecondarySurfaceColor = Color.FromArgb(28, 28, 28);
-        private static readonly Color HeaderTextColor = Color.FromArgb(210, 210, 210);
         private const float SidePanelScreenRatio = 0.28f;
         private const int MinimumSidePanelWidth = 320;
         private const int TargetViewportWidth = 920;
@@ -73,6 +178,7 @@ namespace GalaxyViewer
         private float _smoothedFps = 60f;
         private int _currentStarCount;
         private bool _isGenerating;
+        private string _generationStatus = string.Empty;
 
         public MainForm()
         {
@@ -84,7 +190,7 @@ namespace GalaxyViewer
             ClientSize = new Size(sidePanelWidth + TargetViewportWidth, 800);
             MinimumSize = new Size(Math.Max(1000, sidePanelWidth + 100), 700);
             StartPosition = FormStartPosition.CenterScreen;
-            BackColor = PanelBackColor;
+            BackColor = _theme.PanelBackColor;
             Font = new Font("Segoe UI", 9f, FontStyle.Regular, GraphicsUnit.Point);
             _toolTip = new ToolTip
             {
@@ -92,8 +198,8 @@ namespace GalaxyViewer
                 AutoPopDelay = 10000,
                 InitialDelay = 200,
                 ReshowDelay = 100,
-                BackColor = Color.FromArgb(48, 48, 48),
-                ForeColor = Color.WhiteSmoke,
+                BackColor = _theme.TooltipBackColor,
+                ForeColor = _theme.TooltipForeColor,
             };
 
             var presetDefinitions = BuildPresetDefinitions();
@@ -112,24 +218,24 @@ namespace GalaxyViewer
                 Orientation = Orientation.Vertical,
                 Panel1MinSize = MinimumSidePanelWidth,
                 FixedPanel = FixedPanel.Panel1,
-                BackColor = PanelBackColor,
+                BackColor = _theme.PanelBackColor,
             };
 
             Controls.Add(_split);
             _split.SplitterMoved += (_, _) => SaveSplitterDistance();
 
-            var panelHost = new TableLayoutPanel
+            _panelHost = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 2,
                 Padding = new Padding(14, 12, 14, 12),
-                BackColor = PanelBackColor,
+                BackColor = _theme.PanelBackColor,
             };
-            panelHost.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            panelHost.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-            _split.Panel1.Controls.Add(panelHost);
-            _split.Panel1.BackColor = PanelBackColor;
+            _panelHost.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _panelHost.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            _split.Panel1.Controls.Add(_panelHost);
+            _split.Panel1.BackColor = _theme.PanelBackColor;
 
             _glControl = new GLControl(new GLControlSettings
             {
@@ -152,14 +258,38 @@ namespace GalaxyViewer
                 Width = Math.Max(200, _glControl.ClientSize.Width - 24),
                 Location = new Point(12, 12),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                Text = "Left-drag: orbit | Scroll: zoom | Drag values to scrub (Shift=10x, Alt=0.1x)",
-                BackColor = Color.FromArgb(150, 16, 16, 16),
-                ForeColor = Color.WhiteSmoke,
+                Text = "Left-drag: orbit | Scroll or buttons: zoom | Drag values to scrub (Shift=10x, Alt=0.1x)",
+                BackColor = _theme.OverlayBackColor,
+                ForeColor = _theme.TextColor,
                 Padding = new Padding(10, 6, 10, 6),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Visible = false,
             };
             _glControl.Controls.Add(_helpOverlay);
+
+            _zoomInButton = CreateFlatButton("+");
+            _zoomOutButton = CreateFlatButton("-");
+            _zoomInButton.Width = _zoomOutButton.Width = 34;
+            _zoomInButton.Height = _zoomOutButton.Height = 30;
+            _zoomInButton.Margin = _zoomOutButton.Margin = new Padding(2);
+            _zoomInButton.Font = new Font(Font.FontFamily, 10.5f, FontStyle.Bold, GraphicsUnit.Point);
+            _zoomOutButton.Font = new Font(Font.FontFamily, 10.5f, FontStyle.Bold, GraphicsUnit.Point);
+
+            _zoomPanel = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                BackColor = Color.FromArgb(140, _theme.OverlayBackColor),
+                Padding = new Padding(6, 6, 6, 6),
+                Margin = new Padding(0),
+            };
+            _zoomPanel.Controls.Add(_zoomInButton);
+            _zoomPanel.Controls.Add(_zoomOutButton);
+            _glControl.Controls.Add(_zoomPanel);
+
             _helpTimer = new System.Windows.Forms.Timer { Interval = 2800 };
             _helpTimer.Tick += (_, _) =>
             {
@@ -180,7 +310,7 @@ namespace GalaxyViewer
             _brightnessBox = CreateNumeric(0.1m, 2.5m, (decimal)_parameters.Brightness, 0.05m, 2);
             _seedBox = CreateNumeric(0, 1000000, _parameters.Seed, 1);
 
-            _bulgeRadiusBox = CreateNumeric(0.1m, 20, (decimal)_parameters.BulgeRadius, 0.1m, 1);
+            _bulgeRadiusBox = CreateNumeric(0.1m, 80, (decimal)_parameters.BulgeRadius, 0.1m, 1);
             _bulgeStarCountBox = CreateNumeric(0, 100000, _parameters.BulgeStarCount, 1000);
             _bulgeFalloffBox = CreateNumeric(0.5m, 10, (decimal)_parameters.BulgeFalloff, 0.1m, 1);
             _bulgeVerticalScaleBox = CreateNumeric(0.1m, 4, (decimal)_parameters.BulgeVerticalScale, 0.05m, 2);
@@ -198,8 +328,8 @@ namespace GalaxyViewer
                 Dock = DockStyle.Fill,
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(36, 36, 36),
-                ForeColor = Color.WhiteSmoke,
+                BackColor = _theme.InputBackColor,
+                ForeColor = _theme.TextColor,
                 Margin = new Padding(0, 2, 0, 2),
             };
             _presetBox.Items.AddRange(_presetNames);
@@ -217,12 +347,12 @@ namespace GalaxyViewer
                 Dock = DockStyle.Fill,
                 AutoSize = false,
                 Text = "Ready",
-                ForeColor = Color.Gainsboro,
+                ForeColor = _theme.TextColor,
                 Padding = new Padding(4, 4, 4, 2),
                 TextAlign = ContentAlignment.MiddleLeft,
             };
 
-            var presetLabel = new Label
+            _presetLabel = new Label
             {
                 Text = "Preset",
                 Dock = DockStyle.Fill,
@@ -230,27 +360,28 @@ namespace GalaxyViewer
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(0, 0, 6, 0),
                 Margin = new Padding(0, 2, 0, 2),
-                ForeColor = Color.Gainsboro,
+                ForeColor = _theme.TextColor,
             };
 
-            var presetCard = new TableLayoutPanel
+            _presetCard = new TableLayoutPanel
             {
                 ColumnCount = 2,
-                RowCount = 3,
+                RowCount = 4,
                 Dock = DockStyle.Fill,
-                BackColor = SecondarySurfaceColor,
+                BackColor = _theme.SecondarySurfaceColor,
                 Padding = new Padding(10, 8, 10, 10),
                 Margin = new Padding(0, 0, 0, 10),
             };
-            presetCard.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96f));
-            presetCard.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-            presetCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            presetCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            presetCard.RowStyles.Add(new RowStyle(SizeType.Absolute, 32f));
+            _presetCard.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96f));
+            _presetCard.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            _presetCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _presetCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _presetCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _presetCard.RowStyles.Add(new RowStyle(SizeType.Absolute, 32f));
 
             _presetPreview.Margin = new Padding(0, 0, 12, 0);
-            presetCard.Controls.Add(_presetPreview, 0, 0);
-            presetCard.SetRowSpan(_presetPreview, 3);
+            _presetCard.Controls.Add(_presetPreview, 0, 0);
+            _presetCard.SetRowSpan(_presetPreview, 4);
 
             var presetHeader = new TableLayoutPanel
             {
@@ -261,9 +392,45 @@ namespace GalaxyViewer
             };
             presetHeader.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             presetHeader.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-            presetHeader.Controls.Add(presetLabel, 0, 0);
+            presetHeader.Controls.Add(_presetLabel, 0, 0);
             presetHeader.Controls.Add(_presetBox, 1, 0);
-            presetCard.Controls.Add(presetHeader, 1, 0);
+            _presetCard.Controls.Add(presetHeader, 1, 0);
+
+            _themeLabel = new Label
+            {
+                Text = "Theme",
+                Dock = DockStyle.Fill,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(0, 0, 6, 0),
+                Margin = new Padding(0, 0, 0, 2),
+                ForeColor = _theme.TextColor,
+            };
+
+            _themeBox = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = _theme.InputBackColor,
+                ForeColor = _theme.TextColor,
+                Margin = new Padding(0, 2, 0, 2),
+            };
+            _themeBox.Items.AddRange(_themes.Select(t => t.Name).ToArray());
+            _themeBox.SelectedIndex = 0;
+
+            var themeRow = new TableLayoutPanel
+            {
+                ColumnCount = 2,
+                Dock = DockStyle.Fill,
+                RowCount = 1,
+                Margin = new Padding(0, 2, 0, 6),
+            };
+            themeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            themeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            themeRow.Controls.Add(_themeLabel, 0, 0);
+            themeRow.Controls.Add(_themeBox, 1, 0);
+            _presetCard.Controls.Add(themeRow, 1, 1);
 
             var presetActions = new FlowLayoutPanel
             {
@@ -275,28 +442,28 @@ namespace GalaxyViewer
                 Margin = new Padding(0, 4, 0, 8),
             };
             presetActions.Controls.Add(_resetButton);
-            presetCard.Controls.Add(presetActions, 1, 1);
+            _presetCard.Controls.Add(presetActions, 1, 2);
 
-            var statusPanel = new Panel
+            _statusPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = ControlSurfaceColor,
+                BackColor = _theme.ControlSurfaceColor,
                 Padding = new Padding(8, 4, 8, 4),
                 Margin = new Padding(0, 6, 0, 0),
                 Height = 32,
             };
-            statusPanel.Controls.Add(_statusLabel);
-            presetCard.SetColumnSpan(statusPanel, 2);
-            presetCard.Controls.Add(statusPanel, 0, 2);
+            _statusPanel.Controls.Add(_statusLabel);
+            _presetCard.SetColumnSpan(_statusPanel, 2);
+            _presetCard.Controls.Add(_statusPanel, 0, 3);
 
-            var presetContainer = new Panel
+            _presetContainer = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = PanelBorderColor,
+                BackColor = _theme.PanelBorderColor,
                 Padding = new Padding(1),
                 Margin = new Padding(0, 0, 0, 8),
             };
-            presetContainer.Controls.Add(presetCard);
+            _presetContainer.Controls.Add(_presetCard);
 
             _settingsPanel = new TableLayoutPanel
             {
@@ -304,13 +471,13 @@ namespace GalaxyViewer
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 Padding = new Padding(0, 0, 0, 10),
-                BackColor = PanelBackColor,
+                BackColor = _theme.PanelBackColor,
             };
             _settingsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             _settingsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
 
-            panelHost.Controls.Add(presetContainer, 0, 0);
-            panelHost.Controls.Add(_settingsPanel, 0, 1);
+            _panelHost.Controls.Add(_presetContainer, 0, 0);
+            _panelHost.Controls.Add(_settingsPanel, 0, 1);
 
             int row = 0;
             AddSectionHeader(_settingsPanel, "Galaxy disk", ref row);
@@ -341,9 +508,13 @@ namespace GalaxyViewer
             _regenTimer = new System.Windows.Forms.Timer { Interval = 200 };
             _regenTimer.Tick += (_, _) => { _regenTimer.Stop(); RegenerateGalaxy(); };
 
+            _themeBox.SelectedIndexChanged += OnThemeChanged;
+
             HookEvents();
-            SetupPresetTooltips(presetLabel);
-            _split.SplitterDistance = ComputeInitialSplitterDistance(sidePanelWidth, panelHost);
+            SetupPresetTooltips();
+            ApplyTheme(_theme);
+            PositionViewportOverlays();
+            _split.SplitterDistance = ComputeInitialSplitterDistance(sidePanelWidth, _panelHost);
         }
 
         private void HookEvents()
@@ -363,7 +534,11 @@ namespace GalaxyViewer
             };
 
             _glControl.Paint += (_, _) => RenderFrame();
-            _glControl.Resize += (_, _) => _glControl.Invalidate();
+            _glControl.Resize += (_, _) =>
+            {
+                PositionViewportOverlays();
+                _glControl.Invalidate();
+            };
 
             _glControl.MouseDown += (_, e) =>
             {
@@ -388,8 +563,11 @@ namespace GalaxyViewer
 
             _glControl.MouseWheel += (_, e) =>
             {
-                _camera.Zoom(-e.Delta * 0.05f);
+                AdjustZoom(-e.Delta * 0.05f);
             };
+
+            _zoomInButton.Click += (_, _) => AdjustZoom(-8f);
+            _zoomOutButton.Click += (_, _) => AdjustZoom(8f);
 
             Application.Idle += OnIdle;
 
@@ -408,6 +586,20 @@ namespace GalaxyViewer
             _bulgeFalloffBox.ValueChanged += OnParameterChanged;
             _bulgeVerticalScaleBox.ValueChanged += OnParameterChanged;
             _bulgeBrightnessBox.ValueChanged += OnParameterChanged;
+        }
+
+        private void AdjustZoom(float delta)
+        {
+            _camera.Zoom(delta);
+            _glControl.Invalidate();
+        }
+
+        private void PositionViewportOverlays()
+        {
+            _helpOverlay.Width = Math.Max(200, _glControl.ClientSize.Width - 24);
+            int x = Math.Max(8, _glControl.ClientSize.Width - _zoomPanel.Width - 12);
+            _zoomPanel.Location = new Point(x, 12);
+            _zoomPanel.BringToFront();
         }
 
         private int ComputeInitialSplitterDistance(int sidePanelWidth, TableLayoutPanel? panelHost)
@@ -1264,11 +1456,22 @@ namespace GalaxyViewer
 
             float fps = 1f / deltaSeconds;
             _smoothedFps = (_smoothedFps * 0.9f) + (fps * 0.1f);
+            UpdateStatusLabel();
+        }
+
+        private void UpdateStatusLabel()
+        {
+            var status = $"Stars: {_currentStarCount:N0} | FPS: {_smoothedFps:F1}";
             if (_isGenerating)
             {
-                return;
+                var tail = string.IsNullOrEmpty(_generationStatus) ? "Generating..." : _generationStatus;
+                status += $" | {tail}";
             }
-            _statusLabel.Text = $"Stars: {_currentStarCount:N0} | FPS: {_smoothedFps:F1}";
+
+            if (!string.Equals(_statusLabel.Text, status, StringComparison.Ordinal))
+            {
+                _statusLabel.Text = status;
+            }
         }
 
         private void RegenerateGalaxy()
@@ -1278,8 +1481,9 @@ namespace GalaxyViewer
             var token = _regenCts.Token;
             var parameters = _parameters.Clone();
             _isGenerating = true;
+            _generationStatus = $"Generating... Bulge: {parameters.BulgeStarCount:N0}";
             SetControlsEnabled(false);
-            _statusLabel.Text = $"Generating... Bulge: {parameters.BulgeStarCount:N0}";
+            UpdateStatusLabel();
 
             Task.Run(() => _generator.Generate(parameters, token), token)
                 .ContinueWith(t =>
@@ -1298,6 +1502,8 @@ namespace GalaxyViewer
                     {
                         _isGenerating = false;
                         SetControlsEnabled(true);
+                        _generationStatus = string.Empty;
+                        UpdateStatusLabel();
                         MessageBox.Show($"Failed to generate galaxy: {t.Exception?.GetBaseException().Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
@@ -1306,13 +1512,14 @@ namespace GalaxyViewer
                     SetControlsEnabled(true);
                     _currentStarCount = t.Result.Count;
                     _renderer.UpdateStars(t.Result);
-                    _statusLabel.Text = $"Stars: {_currentStarCount:N0} | FPS: {_smoothedFps:F1}";
+                    _generationStatus = string.Empty;
+                    UpdateStatusLabel();
                 }, TaskScheduler.FromCurrentSynchronizationContext());
         }
 
-        private static ScrubbableNumeric CreateNumeric(decimal min, decimal max, decimal value, decimal increment, int decimalPlaces = 0)
+        private ScrubbableNumeric CreateNumeric(decimal min, decimal max, decimal value, decimal increment, int decimalPlaces = 0)
         {
-            return new ScrubbableNumeric
+            var control = new ScrubbableNumeric
             {
                 Minimum = min,
                 Maximum = max,
@@ -1322,10 +1529,13 @@ namespace GalaxyViewer
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 2, 0, 2),
                 MinimumSize = new Size(140, StandardControlHeight),
+                Theme = _theme.NumericTheme,
             };
+            _numericControls.Add(control);
+            return control;
         }
 
-        private static Label AddRow(TableLayoutPanel panel, string label, Control control, int row)
+        private Label AddRow(TableLayoutPanel panel, string label, Control control, int row)
         {
             panel.RowStyles.Add(new RowStyle(SizeType.Absolute, StandardRowHeight));
             var lbl = new Label
@@ -1336,7 +1546,7 @@ namespace GalaxyViewer
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(0, 2, 0, 0),
                 Margin = new Padding(0, 4, 8, 4),
-                ForeColor = Color.Gainsboro,
+                ForeColor = _theme.TextColor,
                 MinimumSize = new Size(140, 0),
             };
             panel.Controls.Add(lbl, 0, row);
@@ -1354,7 +1564,7 @@ namespace GalaxyViewer
                 AutoSize = false,
                 TextAlign = ContentAlignment.BottomLeft,
                 Font = new Font(panel.Font, FontStyle.Bold),
-                ForeColor = HeaderTextColor,
+                ForeColor = _theme.HeaderTextColor,
                 Padding = new Padding(0, 8, 0, 2),
                 Margin = new Padding(0, 10, 0, 4),
             };
@@ -1385,7 +1595,7 @@ namespace GalaxyViewer
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(0, 2, 0, 0),
                 Margin = new Padding(0, 4, 8, 4),
-                ForeColor = Color.Gainsboro,
+                ForeColor = _theme.TextColor,
                 MinimumSize = new Size(140, 0),
             };
 
@@ -1414,14 +1624,14 @@ namespace GalaxyViewer
             row++;
         }
 
-        private static void AddSeparator(TableLayoutPanel panel, int row)
+        private void AddSeparator(TableLayoutPanel panel, int row)
         {
             panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 1f));
             var line = new Panel
             {
                 Height = 1,
                 Dock = DockStyle.Fill,
-                BackColor = PanelBorderColor,
+                BackColor = _theme.PanelBorderColor,
                 Margin = new Padding(0, 6, 0, 6),
             };
             panel.SetColumnSpan(line, 2);
@@ -1435,33 +1645,38 @@ namespace GalaxyViewer
                 Text = text,
                 Dock = DockStyle.Fill,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(45, 45, 45),
-                ForeColor = Color.WhiteSmoke,
+                BackColor = _theme.ButtonBackColor,
+                ForeColor = _theme.TextColor,
                 Margin = new Padding(0, 2, 0, 2),
                 Height = StandardControlHeight,
                 FlatAppearance =
                 {
-                    BorderColor = AccentColor,
+                    BorderColor = _theme.AccentColor,
                     BorderSize = 1,
-                    MouseOverBackColor = Color.FromArgb(60, 60, 60),
-                    MouseDownBackColor = Color.FromArgb(55, 55, 55),
+                    MouseOverBackColor = _theme.ButtonHoverColor,
+                    MouseDownBackColor = _theme.ButtonDownColor,
                 },
             };
         }
 
-        private void SetupPresetTooltips(Label presetLabel)
+        private void SetupPresetTooltips()
         {
-            _toolTip.SetToolTip(presetLabel, "Choose a starting configuration.");
+            _toolTip.SetToolTip(_presetLabel, "Choose a starting configuration.");
             _toolTip.SetToolTip(_presetBox, "Choose a starting configuration.");
             _toolTip.SetToolTip(_presetPreview, "Quick preview of the current preset.");
             _toolTip.SetToolTip(_resetButton, "Restore the default preset values.");
             _toolTip.SetToolTip(_randomizeSeedButton, "Generate a fresh random seed and update the view.");
-            _toolTip.SetToolTip(_glControl, "Left-drag: orbit | Scroll: zoom");
+            _toolTip.SetToolTip(_themeBox, "Switch the UI color theme.");
+            _toolTip.SetToolTip(_themeLabel, "Switch the UI color theme.");
+            _toolTip.SetToolTip(_zoomInButton, "Zoom in (helpful on touchpads or touchscreens).");
+            _toolTip.SetToolTip(_zoomOutButton, "Zoom out (helpful on touchpads or touchscreens).");
+            _toolTip.SetToolTip(_zoomPanel, "Use the + / - buttons when a scroll wheel isn't available.");
+            _toolTip.SetToolTip(_glControl, "Left-drag: orbit | Scroll or + / - buttons: zoom");
         }
 
         private void ShowHelpOverlay()
         {
-            _helpOverlay.Width = Math.Max(200, _glControl.ClientSize.Width - 24);
+            PositionViewportOverlays();
             _helpOverlay.Visible = true;
             _helpOverlay.BringToFront();
             _helpTimer.Stop();
@@ -1476,6 +1691,84 @@ namespace GalaxyViewer
             _settingsPanel.Enabled = enabled;
         }
 
+        private void OnThemeChanged(object? sender, EventArgs e)
+        {
+            if (_themeBox.SelectedIndex < 0 || _themeBox.SelectedIndex >= _themes.Length)
+            {
+                return;
+            }
+
+            var selected = _themes[_themeBox.SelectedIndex];
+            if (!ReferenceEquals(selected, _theme))
+            {
+                ApplyTheme(selected);
+            }
+        }
+
+        private void ApplyTheme(UiTheme theme)
+        {
+            _theme = theme ?? UiTheme.Monochrome;
+
+            BackColor = _theme.PanelBackColor;
+            _split.BackColor = _theme.PanelBackColor;
+            _split.Panel1.BackColor = _theme.PanelBackColor;
+            _panelHost.BackColor = _theme.PanelBackColor;
+            _presetContainer.BackColor = _theme.PanelBorderColor;
+            _presetCard.BackColor = _theme.SecondarySurfaceColor;
+            _settingsPanel.BackColor = _theme.PanelBackColor;
+
+            StyleButton(_resetButton);
+            StyleButton(_randomizeSeedButton);
+            StyleButton(_zoomInButton);
+            StyleButton(_zoomOutButton);
+
+            _presetBox.BackColor = _theme.InputBackColor;
+            _presetBox.ForeColor = _theme.TextColor;
+            _themeBox.BackColor = _theme.InputBackColor;
+            _themeBox.ForeColor = _theme.TextColor;
+            _presetLabel.ForeColor = _theme.TextColor;
+            _themeLabel.ForeColor = _theme.TextColor;
+
+            _statusPanel.BackColor = _theme.ControlSurfaceColor;
+            _statusLabel.ForeColor = _theme.TextColor;
+
+            _toolTip.BackColor = _theme.TooltipBackColor;
+            _toolTip.ForeColor = _theme.TooltipForeColor;
+
+            _helpOverlay.BackColor = _theme.OverlayBackColor;
+            _helpOverlay.ForeColor = _theme.TextColor;
+            _zoomPanel.BackColor = Color.FromArgb(140, _theme.OverlayBackColor);
+
+            foreach (var label in _settingsPanel.Controls.OfType<Label>())
+            {
+                label.ForeColor = label.Font.Bold ? _theme.HeaderTextColor : _theme.TextColor;
+            }
+
+            foreach (var separator in _settingsPanel.Controls.OfType<Panel>().Where(p => p.Height <= 1))
+            {
+                separator.BackColor = _theme.PanelBorderColor;
+            }
+
+            foreach (var numeric in _numericControls)
+            {
+                numeric.Theme = _theme.NumericTheme;
+            }
+
+            _presetPreview.Invalidate();
+            _settingsPanel.Invalidate();
+            PositionViewportOverlays();
+            Invalidate();
+        }
+
+        private void StyleButton(Button button)
+        {
+            button.BackColor = _theme.ButtonBackColor;
+            button.ForeColor = _theme.TextColor;
+            button.FlatAppearance.BorderColor = _theme.AccentColor;
+            button.FlatAppearance.MouseOverBackColor = _theme.ButtonHoverColor;
+            button.FlatAppearance.MouseDownBackColor = _theme.ButtonDownColor;
+        }
+
         private void DrawPresetPreview(object? sender, PaintEventArgs e)
         {
             var rect = _presetPreview.ClientRectangle;
@@ -1485,14 +1778,14 @@ namespace GalaxyViewer
             }
 
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            e.Graphics.Clear(ControlSurfaceColor);
-            using (var border = new Pen(PanelBorderColor))
+            e.Graphics.Clear(_theme.ControlSurfaceColor);
+            using (var border = new Pen(_theme.PanelBorderColor))
             {
                 e.Graphics.DrawRectangle(border, 0, 0, rect.Width - 1, rect.Height - 1);
             }
 
             var inner = Rectangle.Inflate(rect, -4, -4);
-            using (var brush = new LinearGradientBrush(inner, AccentColor, Color.FromArgb(30, 30, 30), LinearGradientMode.ForwardDiagonal))
+            using (var brush = new LinearGradientBrush(inner, _theme.AccentColor, _theme.PresetGlowColor, LinearGradientMode.ForwardDiagonal))
             {
                 e.Graphics.FillEllipse(brush, inner);
             }

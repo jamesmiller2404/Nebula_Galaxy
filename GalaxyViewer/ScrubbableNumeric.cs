@@ -6,6 +6,73 @@ using System.Windows.Forms;
 
 namespace GalaxyViewer
 {
+    internal sealed class ScrubbableNumericTheme
+    {
+        public Color BorderColor { get; }
+        public Color HoverBorderColor { get; }
+        public Color FillColor { get; }
+        public Color HoverFillColor { get; }
+        public Color FocusFillColor { get; }
+        public Color GripColor { get; }
+        public Color AccentColor { get; }
+        public Color StepperFillColor { get; }
+        public Color StepperHoverColor { get; }
+        public Color StepperPressedColor { get; }
+        public Color TextColor { get; }
+
+        private ScrubbableNumericTheme(
+            Color borderColor,
+            Color hoverBorderColor,
+            Color fillColor,
+            Color hoverFillColor,
+            Color focusFillColor,
+            Color gripColor,
+            Color accentColor,
+            Color stepperFillColor,
+            Color stepperHoverColor,
+            Color stepperPressedColor,
+            Color textColor)
+        {
+            BorderColor = borderColor;
+            HoverBorderColor = hoverBorderColor;
+            FillColor = fillColor;
+            HoverFillColor = hoverFillColor;
+            FocusFillColor = focusFillColor;
+            GripColor = gripColor;
+            AccentColor = accentColor;
+            StepperFillColor = stepperFillColor;
+            StepperHoverColor = stepperHoverColor;
+            StepperPressedColor = stepperPressedColor;
+            TextColor = textColor;
+        }
+
+        public static readonly ScrubbableNumericTheme Monochrome = new(
+            Color.FromArgb(70, 70, 70),
+            Color.FromArgb(95, 120, 160),
+            Color.FromArgb(42, 42, 42),
+            Color.FromArgb(48, 48, 54),
+            Color.FromArgb(50, 60, 80),
+            Color.FromArgb(80, 90, 110),
+            Color.FromArgb(78, 156, 255),
+            Color.FromArgb(55, 55, 60),
+            Color.FromArgb(64, 74, 94),
+            Color.FromArgb(82, 112, 160),
+            Color.Gainsboro);
+
+        public static readonly ScrubbableNumericTheme Nebula = new(
+            Color.FromArgb(36, 56, 78),
+            Color.FromArgb(90, 150, 210),
+            Color.FromArgb(18, 22, 38),
+            Color.FromArgb(28, 32, 52),
+            Color.FromArgb(40, 52, 82),
+            Color.FromArgb(110, 150, 210),
+            Color.FromArgb(255, 140, 90),
+            Color.FromArgb(30, 36, 60),
+            Color.FromArgb(54, 68, 104),
+            Color.FromArgb(76, 108, 150),
+            Color.FromArgb(235, 242, 255));
+    }
+
     internal class ScrubbableNumeric : UserControl
     {
         private readonly TextBox _textBox;
@@ -24,16 +91,7 @@ namespace GalaxyViewer
         private const int GripWidth = 16;
         private const int StepperWidth = 14;
         private const int StepperSpacing = 2;
-        private readonly Color _borderColor = Color.FromArgb(70, 70, 70);
-        private readonly Color _hoverBorderColor = Color.FromArgb(95, 120, 160);
-        private readonly Color _fillColor = Color.FromArgb(42, 42, 42);
-        private readonly Color _hoverFillColor = Color.FromArgb(48, 48, 54);
-        private readonly Color _focusFillColor = Color.FromArgb(50, 60, 80);
-        private readonly Color _gripColor = Color.FromArgb(80, 90, 110);
-        private readonly Color _accentColor = Color.FromArgb(78, 156, 255);
-        private readonly Color _stepperFillColor = Color.FromArgb(55, 55, 60);
-        private readonly Color _stepperHoverColor = Color.FromArgb(64, 74, 94);
-        private readonly Color _stepperPressedColor = Color.FromArgb(82, 112, 160);
+        private ScrubbableNumericTheme _theme = ScrubbableNumericTheme.Monochrome;
         private bool _hovering;
         private bool _arrowUpHot;
         private bool _arrowDownHot;
@@ -53,8 +111,8 @@ namespace GalaxyViewer
             {
                 Dock = DockStyle.Fill,
                 TextAlign = HorizontalAlignment.Right,
-                BackColor = _fillColor,
-                ForeColor = Color.Gainsboro,
+                BackColor = _theme.FillColor,
+                ForeColor = _theme.TextColor,
                 BorderStyle = BorderStyle.None,
                 Cursor = Cursors.SizeWE,
                 Margin = new Padding(0),
@@ -67,13 +125,13 @@ namespace GalaxyViewer
             _textBox.KeyDown += OnTextBoxKeyDown;
             _textBox.Leave += (_, _) =>
             {
-                _textBox.BackColor = _fillColor;
+                _textBox.BackColor = _theme.FillColor;
                 CommitText();
                 Invalidate();
             };
             _textBox.Enter += (_, _) =>
             {
-                _textBox.BackColor = _focusFillColor;
+                _textBox.BackColor = _theme.FocusFillColor;
                 Invalidate();
             };
             _textBox.MouseEnter += (_, _) => { _hovering = true; Invalidate(); };
@@ -87,6 +145,7 @@ namespace GalaxyViewer
             Increment = 1m;
             DecimalPlaces = 0;
             Value = 0m;
+            ApplyTheme(_theme);
         }
 
         public decimal Minimum
@@ -137,6 +196,12 @@ namespace GalaxyViewer
         {
             get => _value;
             set => SetValue(value, false);
+        }
+
+        public ScrubbableNumericTheme Theme
+        {
+            get => _theme;
+            set => ApplyTheme(value ?? ScrubbableNumericTheme.Monochrome);
         }
 
         public void AttachDragHandle(Control control)
@@ -421,19 +486,19 @@ namespace GalaxyViewer
             var rect = GetDrawingRect();
 
             using var path = CreateRoundedRectangle(rect, CornerRadius);
-            var fill = _textBox.Focused ? _focusFillColor : (_hovering ? _hoverFillColor : _fillColor);
+            var fill = _textBox.Focused ? _theme.FocusFillColor : (_hovering ? _theme.HoverFillColor : _theme.FillColor);
             using var brush = new SolidBrush(fill);
-            using var pen = new Pen(_textBox.Focused ? _accentColor : (_hovering ? _hoverBorderColor : _borderColor), 1f);
+            using var pen = new Pen(_textBox.Focused ? _theme.AccentColor : (_hovering ? _theme.HoverBorderColor : _theme.BorderColor), 1f);
             e.Graphics.FillPath(brush, path);
             e.Graphics.DrawPath(pen, path);
 
             DrawStepper(e.Graphics, rect);
 
             var gripRect = GetGripRect(rect);
-            using var gripBrush = new LinearGradientBrush(gripRect, Color.FromArgb(30, _gripColor), Color.FromArgb(80, _gripColor), LinearGradientMode.Vertical);
+            using var gripBrush = new LinearGradientBrush(gripRect, Color.FromArgb(30, _theme.GripColor), Color.FromArgb(80, _theme.GripColor), LinearGradientMode.Vertical);
             e.Graphics.FillRectangle(gripBrush, gripRect);
 
-            using var gripPen = new Pen(_accentColor, 1f);
+            using var gripPen = new Pen(_theme.AccentColor, 1f);
             int centerX = gripRect.Left + GripWidth / 2 - 1;
             for (int i = 0; i < 3; i++)
             {
@@ -481,26 +546,26 @@ namespace GalaxyViewer
             DrawArrowButton(graphics, upRect, _arrowUpHot, _arrowUpPressed && _arrowUpHot, true);
             DrawArrowButton(graphics, downRect, _arrowDownHot, _arrowDownPressed && _arrowDownHot, false);
 
-            using var borderPen = new Pen(_borderColor);
+            using var borderPen = new Pen(_theme.BorderColor);
             graphics.DrawRectangle(borderPen, new Rectangle(combined.X, combined.Y, combined.Width - 1, combined.Height - 1));
             graphics.DrawLine(borderPen, combined.Left, upRect.Bottom, combined.Right - 1, upRect.Bottom);
         }
 
         private void DrawArrowButton(Graphics graphics, Rectangle rect, bool hot, bool pressed, bool up)
         {
-            Color background = _stepperFillColor;
+            Color background = _theme.StepperFillColor;
             if (pressed)
             {
-                background = _stepperPressedColor;
+                background = _theme.StepperPressedColor;
             }
             else if (hot)
             {
-                background = _stepperHoverColor;
+                background = _theme.StepperHoverColor;
             }
 
             using var backgroundBrush = new SolidBrush(background);
             graphics.FillRectangle(backgroundBrush, rect);
-            DrawArrowGlyph(graphics, rect, up, pressed ? Color.White : _accentColor);
+            DrawArrowGlyph(graphics, rect, up, pressed ? Color.White : _theme.AccentColor);
         }
 
         private static void DrawArrowGlyph(Graphics graphics, Rectangle rect, bool up, Color color)
@@ -556,6 +621,14 @@ namespace GalaxyViewer
             Cursor = Cursors.IBeam;
             _textBox.Focus();
             _textBox.SelectAll();
+        }
+
+        private void ApplyTheme(ScrubbableNumericTheme theme)
+        {
+            _theme = theme ?? ScrubbableNumericTheme.Monochrome;
+            _textBox.ForeColor = _theme.TextColor;
+            _textBox.BackColor = _textBox.Focused ? _theme.FocusFillColor : _theme.FillColor;
+            Invalidate();
         }
     }
 }

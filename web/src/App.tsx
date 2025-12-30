@@ -37,12 +37,22 @@ export default function App() {
   const [status, setStatus] = useState("Ready");
   const [generating, setGenerating] = useState(false);
   const [rendererReady, setRendererReady] = useState(false);
+  const [tiltSupported, setTiltSupported] = useState(false);
+  const [tiltEnabled, setTiltEnabled] = useState(false);
+  const [tiltStatus, setTiltStatus] = useState<string | null>(null);
+  const tiltOrigin = useRef<{ beta: number; gamma: number; yaw: number; pitch: number } | null>(
+    null
+  );
 
   // Apply theme tokens to CSS variables
   useEffect(() => {
     Object.entries(nebulaThemeVars).forEach(([key, value]) => {
       document.documentElement.style.setProperty(key, value);
     });
+  }, []);
+
+  useEffect(() => {
+    setTiltSupported(typeof window !== "undefined" && "DeviceOrientationEvent" in window);
   }, []);
 
   // Init renderer
@@ -70,32 +80,80 @@ export default function App() {
     };
   }, []);
 
-  // Canvas interactions (orbit + zoom)
+  // Canvas interactions (orbit + zoom) with touch support
   useEffect(() => {
     if (!rendererReady) return;
     const canvas = canvasRef.current;
     const renderer = rendererRef.current;
     if (!canvas || !renderer) return;
-    let dragging = false;
+    const activePointers = new Map<number, { x: number; y: number }>();
+    let draggingId: number | null = null;
     let lastX = 0;
     let lastY = 0;
+    let lastPinchDistance: number | null = null;
+    const pinchScale = 0.04;
+
+    const updatePointer = (e: PointerEvent) => {
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    };
+
+    const currentPinchDistance = () => {
+      if (activePointers.size < 2) return 0;
+      const [a, b] = Array.from(activePointers.values());
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    };
+
     const onDown = (e: PointerEvent) => {
-      dragging = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
+      updatePointer(e);
+      if (activePointers.size === 1) {
+        draggingId = e.pointerId;
+        lastX = e.clientX;
+        lastY = e.clientY;
+      } else {
+        draggingId = null;
+        lastPinchDistance = currentPinchDistance();
+      }
       canvas.setPointerCapture(e.pointerId);
     };
     const onMove = (e: PointerEvent) => {
-      if (!dragging) return;
-      const dx = e.clientX - lastX;
-      const dy = e.clientY - lastY;
-      renderer.orbit(dx * 0.005, -dy * 0.005);
-      lastX = e.clientX;
-      lastY = e.clientY;
+      if (!activePointers.has(e.pointerId)) return;
+      updatePointer(e);
+
+      if (activePointers.size >= 2) {
+        const dist = currentPinchDistance();
+        if (lastPinchDistance !== null && dist > 0) {
+          const delta = lastPinchDistance - dist;
+          renderer.zoom(delta * pinchScale);
+        }
+        lastPinchDistance = dist;
+        return;
+      }
+
+      lastPinchDistance = null;
+      if (draggingId === e.pointerId) {
+        const dx = e.clientX - lastX;
+        const dy = e.clientY - lastY;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        renderer.orbit(dx * 0.005, -dy * 0.005);
+        if (tiltEnabled) {
+          tiltOrigin.current = null;
+        }
+      }
     };
     const onUp = (e: PointerEvent) => {
-      dragging = false;
-      canvas.releasePointerCapture(e.pointerId);
+      activePointers.delete(e.pointerId);
+      if (draggingId === e.pointerId) {
+        draggingId = null;
+      }
+      if (activePointers.size < 2) {
+        lastPinchDistance = null;
+      }
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignored */
+      }
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -113,7 +171,7 @@ export default function App() {
       canvas.removeEventListener("pointercancel", onUp);
       canvas.removeEventListener("wheel", onWheel);
     };
-  }, [rendererReady]);
+  }, [rendererReady, tiltEnabled]);
 
   // Worker setup
   useEffect(() => {
@@ -157,6 +215,29 @@ export default function App() {
     return () => clearTimeout(timeout);
   }, [params]);
 
+  useEffect(() => {
+    if (!rendererReady || !tiltEnabled) return;
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+
+    const handleOrientation = (event: DeviceOrientationEvent) => {
+      const { beta, gamma } = event;
+      if (beta === null || gamma === null) return;
+      if (!tiltOrigin.current) {
+        const { yaw, pitch } = renderer.getAngles();
+        tiltOrigin.current = { beta, gamma, yaw, pitch };
+        return;
+      }
+      const origin = tiltOrigin.current;
+      const yaw = origin.yaw + degToRad((gamma - origin.gamma) * 1.15);
+      const pitch = origin.pitch + degToRad((beta - origin.beta) * 0.85);
+      renderer.setAngles(yaw, pitch);
+    };
+
+    window.addEventListener("deviceorientation", handleOrientation, true);
+    return () => window.removeEventListener("deviceorientation", handleOrientation, true);
+  }, [rendererReady, tiltEnabled]);
+
   const presetOptions = useMemo(() => presets.map((p) => p.name), []);
 
   const updateParam = (key: keyof GalaxyParameters, value: number) => {
@@ -166,20 +247,53 @@ export default function App() {
   const loadPreset = (name: string) => {
     const preset = findPreset(name);
     if (!preset) return;
-    // Preserve current seed like the desktop app
-    preset.seed = params.seed;
     setPresetName(name);
     setParams(preset);
   };
 
-  const randomizeSeed = () => {
-    const seed = Math.floor(Math.random() * 1_000_000);
-    setParams((prev) => ({ ...prev, seed }));
-  };
-
   const resetDefault = () => {
     setPresetName("Default");
-    setParams({ ...defaultParameters, seed: params.seed });
+    setParams({ ...defaultParameters });
+  };
+
+  const handleZoom = (delta: number) => {
+    rendererRef.current?.zoom(delta);
+  };
+
+  const enableTilt = async () => {
+    if (!tiltSupported) {
+      setTiltStatus("Tilt needs a device with motion sensors.");
+      return;
+    }
+    const motionEvent = window.DeviceOrientationEvent as typeof DeviceOrientationEvent & {
+      requestPermission?: () => Promise<PermissionState>;
+    };
+    if (typeof motionEvent?.requestPermission === "function") {
+      try {
+        const permission = await motionEvent.requestPermission();
+        if (permission !== "granted") {
+          setTiltStatus("Motion access denied");
+          return;
+        }
+      } catch {
+        setTiltStatus("Motion access blocked");
+        return;
+      }
+    }
+    tiltOrigin.current = null;
+    setTiltEnabled(true);
+    setTiltStatus("Tilt steering enabled");
+  };
+
+  const disableTilt = () => {
+    setTiltEnabled(false);
+    tiltOrigin.current = null;
+    setTiltStatus("Tilt steering off");
+  };
+
+  const recenterTilt = () => {
+    tiltOrigin.current = null;
+    setTiltStatus("Tilt re-centered");
   };
 
   return (
@@ -200,7 +314,48 @@ export default function App() {
           <div className="panel-heading">Viewport</div>
           <div className="canvas-shell">
             <canvas ref={canvasRef} className="viewport" />
-            <div className="hint">Drag to orbit - Scroll to zoom</div>
+            <div className="zoom-controls" aria-label="Zoom controls">
+              <button className="zoom-btn" onClick={() => handleZoom(-8)} aria-label="Zoom in">
+                +
+              </button>
+              <button className="zoom-btn" onClick={() => handleZoom(8)} aria-label="Zoom out">
+                -
+              </button>
+            </div>
+            <div className="hint">
+              {tiltEnabled
+                ? "Tilt or drag to orbit | Pinch or + / - to zoom | Tap Re-center if drift appears"
+                : "Drag to orbit | Scroll or pinch to zoom | Tap + / - if needed"}
+            </div>
+          </div>
+          <div className="motion-row">
+            <div className="motion-copy">
+              <div className="motion-title">Motion steering</div>
+              <div className="motion-subtitle">
+                {tiltEnabled
+                  ? "Tilt to orbit; dragging still works. Pinch or use + / - to zoom. Re-center if drift appears."
+                  : tiltSupported
+                  ? "Enable device tilt on mobile for gimbal-like control."
+                  : "Motion sensors not detected in this browser."}
+              </div>
+              {tiltStatus && <div className="motion-status">{tiltStatus}</div>}
+            </div>
+            <div className="chip-row motion-actions">
+              {!tiltEnabled ? (
+                <button className="btn secondary" onClick={enableTilt} disabled={!tiltSupported}>
+                  {tiltSupported ? "Enable tilt" : "Tilt unavailable"}
+                </button>
+              ) : (
+                <>
+                  <button className="btn secondary" onClick={recenterTilt}>
+                    Re-center
+                  </button>
+                  <button className="btn ghost" onClick={disableTilt}>
+                    Use touch orbit
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </section>
 
@@ -228,23 +383,6 @@ export default function App() {
                     <option key={name}>{name}</option>
                   ))}
                 </select>
-              </div>
-
-              <div className="stack">
-                <label className="small-label">Seed</label>
-                <div className="seed-row">
-                  <input
-                    type="number"
-                    value={params.seed}
-                    className="input"
-                    onChange={(e) =>
-                      updateParam("seed", clampNumber(parseInt(e.target.value, 10), 0, 1_000_000))
-                    }
-                  />
-                  <button className="btn ghost" onClick={randomizeSeed}>
-                    Randomize
-                  </button>
-                </div>
               </div>
               <div className="stack">
                 <label className="small-label">Actions</label>
@@ -352,7 +490,7 @@ export default function App() {
                   label="Bulge radius"
                   value={params.bulgeRadius}
                   min={0.1}
-                  max={20}
+                  max={80}
                   step={0.1}
                   decimals={1}
                   onChange={(v) => updateParam("bulgeRadius", v)}
@@ -523,6 +661,10 @@ function NumericField({
 
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function degToRad(value: number) {
+  return (value * Math.PI) / 180;
 }
 
 function roundTo(value: number, decimals: number) {
